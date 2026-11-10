@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { LocationPoint, TripType } from '../types';
-import { KOLKATA_PRESET_LOCATIONS, DEMO_ROUTE_COORDINATES, MOCK_NEARBY_DRIVERS } from '../data/kolkataData';
+import { KOLKATA_PRESET_LOCATIONS, DEMO_ROUTE_COORDINATES } from '../data/kolkataData';
+import { reverseGeocodeCoords } from '../services/locationService';
 import { calculateFare, formatRupee } from '../utils/fare';
 import { MapCanvas } from '../components/MapCanvas';
 import { SearchingSheet } from '../components/SearchingSheet';
@@ -34,6 +35,8 @@ export const OwnerHomeScreen: React.FC<OwnerHomeScreenProps> = ({ onOpenVehicles
     selectedVehicle,
     activeRide,
     activeSubscription,
+    onlineDrivers,
+    userLocation,
     cancelSubscription,
     createBooking,
   } = useApp();
@@ -74,6 +77,15 @@ export const OwnerHomeScreen: React.FC<OwnerHomeScreenProps> = ({ onOpenVehicles
   const [creating, setCreating] = useState(false);
 
   // Auto show receipt when ride becomes completed
+  // Auto-sync initial pickup point from user's live GPS location if not manually set
+  useEffect(() => {
+    if (userLocation && !pickupPoint) {
+      reverseGeocodeCoords(userLocation.lat, userLocation.lng).then((point) => {
+        setPickupPoint((prev) => prev || point);
+      });
+    }
+  }, [userLocation]);
+
   React.useEffect(() => {
     if (activeRide?.status === 'completed') {
       setShowReceiptModal(true);
@@ -143,10 +155,11 @@ export const OwnerHomeScreen: React.FC<OwnerHomeScreenProps> = ({ onOpenVehicles
           pickupLocation={pickupPoint}
           destinationLocation={destinationPoint}
           driverLocation={activeRide?.driverLocation || null}
+          userLocation={userLocation}
           routeCoordinates={activeRide?.status === 'ride_active' ? DEMO_ROUTE_COORDINATES : undefined}
           isDraggablePin={!activeRide}
           onPickupChange={(point) => setPickupPoint(point)}
-          nearbyDrivers={!activeRide ? MOCK_NEARBY_DRIVERS : undefined}
+          nearbyDrivers={!activeRide ? onlineDrivers : undefined}
         />
       </div>
 
@@ -172,9 +185,9 @@ export const OwnerHomeScreen: React.FC<OwnerHomeScreenProps> = ({ onOpenVehicles
             </div>
 
             <div className="shrink-0 flex items-center gap-1.5 bg-[#F6F6F6] border border-[#E4E4E4] px-2.5 py-1 rounded-full">
-              <span className="w-2 h-2 rounded-full bg-[#0F7B5F] animate-pulse"></span>
-              <span className="text-[11px] font-semibold text-[#0F7B5F] whitespace-nowrap">
-                {MOCK_NEARBY_DRIVERS.length} nearby
+              <span className={`w-2 h-2 rounded-full ${onlineDrivers.length > 0 ? 'bg-[#0F7B5F] animate-pulse' : 'bg-[#757575]'}`}></span>
+              <span className={`text-[11px] font-semibold whitespace-nowrap ${onlineDrivers.length > 0 ? 'text-[#0F7B5F]' : 'text-[#757575]'}`}>
+                {onlineDrivers.length > 0 ? `${onlineDrivers.length} online` : 'Radar active'}
               </span>
             </div>
           </div>

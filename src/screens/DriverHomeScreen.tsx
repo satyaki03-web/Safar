@@ -19,6 +19,7 @@ export const DriverHomeScreen: React.FC<DriverHomeScreenProps> = ({
     updateDriverProfile,
     driverAvailableRides,
     activeRide,
+    userLocation,
     driverAcceptRide,
     driverMarkEnRoute,
     driverMarkArrived,
@@ -87,7 +88,8 @@ export const DriverHomeScreen: React.FC<DriverHomeScreenProps> = ({
         <MapCanvas
           pickupLocation={activeRide?.pickupLocation || currentIncoming?.pickupLocation || null}
           destinationLocation={activeRide?.destinationLocation || currentIncoming?.destinationLocation || null}
-          driverLocation={activeRide?.driverLocation || { lat: driverProfile?.currentLat || 22.5726, lng: driverProfile?.currentLng || 88.3639 }}
+          driverLocation={activeRide?.driverLocation || userLocation || { lat: driverProfile?.currentLat || 22.5726, lng: driverProfile?.currentLng || 88.3639 }}
+          userLocation={userLocation}
           routeCoordinates={activeRide?.status === 'ride_active' ? DEMO_ROUTE_COORDINATES : undefined}
           isDraggablePin={false}
         />

@@ -36,6 +36,8 @@ import {
   SubscriptionPlanType,
   DayOfWeek,
   DailyDutyHours,
+  LatLng,
+  NearbyDriver,
 } from '../types';
 import { DEMO_ROUTE_COORDINATES, SEED_DRIVERS, KOLKATA_PRESET_LOCATIONS, KOLKATA_CENTER } from '../data/kolkataData';
 import { calculateFare } from '../utils/fare';
@@ -52,6 +54,8 @@ interface AppContextType {
   rideHistory: Ride[];
   subscriptions: SubscriptionBooking[];
   activeSubscription: SubscriptionBooking | null;
+  onlineDrivers: NearbyDriver[];
+  userLocation: LatLng | null;
   isOnline: boolean;
   firestoreConnected: boolean;
   testFirestore: () => Promise<boolean>;
@@ -65,6 +69,7 @@ interface AppContextType {
   addVehicle: (vehicle: Omit<Vehicle, 'id' | 'ownerId' | 'createdAt' | 'updatedAt'>) => Promise<Vehicle>;
   selectVehicle: (v: Vehicle) => void;
   updateDriverProfile: (profile: Partial<DriverProfile>) => Promise<void>;
+  updateDriverLocation: (lat: number, lng: number) => Promise<void>;
   createBooking: (params: {
     vehicleId: string;
     pickupLocation: LocationPoint;
@@ -158,6 +163,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [firestoreConnected, setFirestoreConnected] = useState(true);
   const [loading, setLoading] = useState(false);
 
+  // Real-time live online drivers from Cloud Firestore
+  const [onlineDrivers, setOnlineDrivers] = useState<NearbyDriver[]>([]);
+
+  // Real-time live GPS location for user & driver
+  const [userLocation, setUserLocation] = useState<LatLng | null>(null);
+
   // Diagnostic connection tester for Cloud Firestore
   const testFirestore = async () => {
     const ok = await testConnection();
@@ -166,6 +177,121 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const firebaseInfo = getFirebaseConfigInfo();
+
+  // Firestore Real-Time Online Drivers Query
+  // Whenever any driver goes online or changes their location, all owners see it instantly
+  useEffect(() => {
+    const q = query(collection(db, 'driverProfiles'), where('isOnline', '==', true));
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const drivers: NearbyDriver[] = [];
+        snapshot.forEach((docSnap) => {
+          const data = docSnap.data() as DriverProfile;
+          if (typeof data.currentLat === 'number' && typeof data.currentLng === 'number') {
+            drivers.push({
+              id: docSnap.id,
+              name: data.name || 'Verified Chauffeur',
+              phone: data.phone,
+              photoUrl: data.photoUrl,
+              rating: data.rating || 4.95,
+              tripsCount: data.tripsCompleted || 48,
+              experienceYears: data.experienceYears || 6,
+              vehicleModel: (data.vehicleTypes && data.vehicleTypes.length > 0)
+                ? `${data.vehicleTypes.join(' & ')} Specialist`
+                : 'Commercial Chauffeur',
+              lat: data.currentLat,
+              lng: data.currentLng,
+              area: data.serviceAreas?.[0] || 'Kolkata Central',
+            });
+          }
+        });
+        setOnlineDrivers(drivers);
+      },
+      (error) => {
+        console.warn('Real-time online drivers query notice:', error.message);
+      }
+    );
+
+    return () => unsubscribe();
+  }, []);
+
+  // Update Driver Live Location in state and Cloud Firestore
+  const updateDriverLocation = async (lat: number, lng: number) => {
+    if (!driverProfile) return;
+    const updated = {
+      ...driverProfile,
+      currentLat: lat,
+      currentLng: lng,
+      updatedAt: new Date().toISOString(),
+    };
+    setDriverProfile(updated);
+
+    try {
+      await updateDoc(doc(db, 'driverProfiles', driverProfile.driverId), {
+        currentLat: lat,
+        currentLng: lng,
+        isOnline: true,
+        updatedAt: new Date().toISOString(),
+      });
+
+      // If in an active trip, stream driver coordinates to the ride document for live tracking
+      if (
+        activeRide &&
+        (activeRide.status === 'driver_assigned' ||
+          activeRide.status === 'driver_en_route' ||
+          activeRide.status === 'ride_active')
+      ) {
+        await updateDoc(doc(db, 'rides', activeRide.id), {
+          driverLocation: { lat, lng },
+          updatedAt: new Date().toISOString(),
+        });
+      }
+    } catch (e) {
+      console.warn('Driver live location Firestore update note:', e);
+    }
+  };
+
+  // Continuous live GPS geolocation tracking
+  useEffect(() => {
+    if (typeof navigator === 'undefined' || !navigator.geolocation) return;
+
+    // 1. Initial quick position fix
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const loc: LatLng = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        setUserLocation(loc);
+        if (activeRole === 'driver' && driverProfile?.isOnline) {
+          updateDriverLocation(loc.lat, loc.lng);
+        }
+      },
+      (err) => {
+        console.warn('Initial geolocation notice:', err.message);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }
+    );
+
+    // 2. Active position watcher
+    const watchId = navigator.geolocation.watchPosition(
+      (pos) => {
+        const loc: LatLng = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        setUserLocation(loc);
+        if (activeRole === 'driver' && driverProfile?.isOnline) {
+          updateDriverLocation(loc.lat, loc.lng);
+        }
+      },
+      (err) => {
+        console.warn('Geolocation watch notice:', err.message);
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 }
+    );
+
+    return () => {
+      try {
+        navigator.geolocation.clearWatch(watchId);
+      } catch {}
+    };
+  }, [activeRole, driverProfile?.isOnline, driverProfile?.driverId]);
 
   // Online / offline listeners & database health checks
   useEffect(() => {
@@ -886,6 +1012,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         rideHistory,
         subscriptions,
         activeSubscription,
+        onlineDrivers,
+        userLocation,
         isOnline,
         firestoreConnected,
         testFirestore,
@@ -897,6 +1025,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         addVehicle,
         selectVehicle,
         updateDriverProfile,
+        updateDriverLocation,
         createBooking,
         cancelRide,
         driverAcceptRide,

@@ -1,26 +1,40 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { RecaptchaVerifier, signInWithPhoneNumber, ConfirmationResult } from 'firebase/auth';
+import { auth } from '../services/firebase';
 import { useApp } from '../context/AppContext';
 import { UserRole } from '../types';
 import { IconSteeringWheel, IconCarSide, IconShieldCheck } from '../components/Icons';
+
+declare global {
+  interface Window {
+    recaptchaVerifier?: RecaptchaVerifier;
+    confirmationResult?: ConfirmationResult;
+  }
+}
 
 interface SplashScreenProps {
   onComplete: () => void;
 }
 
 export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
-  const { signInPhone, loading } = useApp();
+  const { signInPhone, loading: appLoading } = useApp();
 
   const [step, setStep] = useState<'welcome' | 'phone' | 'otp'>('welcome');
   const [role, setRole] = useState<UserRole>('owner');
   const [phone, setPhone] = useState('');
   const [name, setName] = useState('');
   const [otp, setOtp] = useState('');
+  const [otpLength, setOtpLength] = useState<4 | 6>(6);
   const [sentCode, setSentCode] = useState('');
+  const [fallbackCode, setFallbackCode] = useState<string | null>(null);
   const [otpError, setOtpError] = useState('');
   const [phoneError, setPhoneError] = useState('');
+  const [isSending, setIsSending] = useState(false);
   const [resendCountdown, setResendCountdown] = useState(30);
   const [canResend, setCanResend] = useState(false);
-  const [smsBanner, setSmsBanner] = useState<string | null>(null);
+  const [smsNotice, setSmsNotice] = useState<{ type: 'carrier' | 'fallback'; message: string } | null>(null);
+
+  const confirmationResultRef = useRef<ConfirmationResult | null>(null);
 
   useEffect(() => {
     let timer: number;
@@ -44,58 +58,146 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
     setStep('phone');
   };
 
-  const generateAndSendOtp = () => {
+  const initRecaptcha = (): RecaptchaVerifier | null => {
+    try {
+      if (window.recaptchaVerifier) {
+        return window.recaptchaVerifier;
+      }
+      const verifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+        size: 'invisible',
+        callback: () => {
+          // Solved automatically
+        },
+        'expired-callback': () => {
+          try {
+            window.recaptchaVerifier?.clear();
+            window.recaptchaVerifier = undefined;
+          } catch {}
+        },
+      });
+      window.recaptchaVerifier = verifier;
+      return verifier;
+    } catch (e) {
+      console.warn('RecaptchaVerifier setup notice:', e);
+      return null;
+    }
+  };
+
+  const dispatchVerification = async () => {
     const rawPhone = phone.replace(/[^0-9]/g, '');
     if (rawPhone.length < 10) {
       setPhoneError('Please enter a valid 10-digit mobile number.');
-      return false;
+      return;
     }
     if (!name.trim()) {
       setPhoneError('Please enter your full name.');
-      return false;
+      return;
     }
 
-    const newCode = Math.floor(1000 + Math.random() * 9000).toString();
-    setSentCode(newCode);
-    setOtp('');
+    setIsSending(true);
+    setPhoneError('');
     setOtpError('');
-    setResendCountdown(30);
-    setCanResend(false);
+    setOtp('');
 
-    // Production SMS dispatch notice
-    setSmsBanner(`SMS Gateway (+91 ${rawPhone.slice(-10)}): Your verification code is ${newCode}`);
-    return true;
-  };
+    const fullPhone = '+91' + rawPhone.slice(-10);
 
-  const handleSendOtp = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (generateAndSendOtp()) {
+    try {
+      const verifier = initRecaptcha();
+      if (!verifier) {
+        throw new Error('reCAPTCHA could not be initialized');
+      }
+
+      // Real Firebase Carrier SMS delivery request
+      const confirmationResult = await signInWithPhoneNumber(auth, fullPhone, verifier);
+      confirmationResultRef.current = confirmationResult;
+      window.confirmationResult = confirmationResult;
+
+      setOtpLength(6);
+      setFallbackCode(null);
+      setSmsNotice({
+        type: 'carrier',
+        message: `Carrier SMS sent to ${fullPhone}. Please enter the 6-digit code received via SMS.`,
+      });
+      setResendCountdown(45);
+      setCanResend(false);
       setStep('otp');
+    } catch (firebaseErr: unknown) {
+      const err = firebaseErr as { code?: string; message?: string };
+      console.warn('Firebase Phone Auth status note:', err?.code || err?.message || err);
+
+      // Graceful fallback for unconfigured Firebase Console (e.g. Phone provider disabled or domain unlisted)
+      const code = Math.floor(1000 + Math.random() * 9000).toString();
+      confirmationResultRef.current = null;
+      setSentCode(code);
+      setFallbackCode(code);
+      setOtpLength(4);
+      setSmsNotice({
+        type: 'fallback',
+        message: `Direct verification code: ${code}. (To receive live carrier SMS, enable 'Phone' in Firebase Console & add Netlify domain).`,
+      });
+      setResendCountdown(30);
+      setCanResend(false);
+      setStep('otp');
+    } finally {
+      setIsSending(false);
     }
   };
 
-  const handleResendOtp = () => {
+  const handleSendOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await dispatchVerification();
+  };
+
+  const handleResendOtp = async () => {
     if (!canResend) return;
-    generateAndSendOtp();
+    await dispatchVerification();
   };
 
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (otp.length !== 4) {
-      setOtpError('Enter the complete 4-digit verification code.');
+    const cleanPhone = phone.replace(/[^0-9]/g, '').slice(-10);
+
+    if (otp.length !== otpLength) {
+      setOtpError(`Please enter the complete ${otpLength}-digit code.`);
       return;
     }
-    if (otp !== sentCode) {
-      setOtpError('Incorrect verification code. Please check and try again.');
-      return;
-    }
+
     setOtpError('');
-    await signInPhone(phone.trim(), name.trim(), role);
-    onComplete();
+
+    try {
+      // 1. If carrier SMS was sent, verify via Firebase confirmationResult
+      if (confirmationResultRef.current) {
+        await confirmationResultRef.current.confirm(otp);
+      } else {
+        // 2. Direct code verification
+        if (otp !== sentCode) {
+          setOtpError('Incorrect verification code. Please check and try again.');
+          return;
+        }
+      }
+
+      // Complete profile synchronization in Firestore
+      await signInPhone(cleanPhone, name.trim(), role);
+      onComplete();
+    } catch (verifyErr: unknown) {
+      const err = verifyErr as { message?: string };
+      console.error('OTP verification error:', err);
+      setOtpError('Invalid code or expired session. Please re-enter or resend.');
+    }
+  };
+
+  const handleAutoFillCode = () => {
+    if (fallbackCode) {
+      setOtp(fallbackCode);
+      setOtpError('');
+    }
   };
 
   return (
     <div className="h-[100dvh] w-full max-w-md mx-auto overflow-hidden flex flex-col justify-between p-4 sm:p-6 select-none bg-[#FFFFFF] transition-opacity duration-700 ease-lux">
+      {/* Invisible anchor required by Firebase Phone Auth reCAPTCHA */}
+      <div id="recaptcha-container" />
+
       {/* Brand Header */}
       <div className="pt-2 sm:pt-4 flex items-start justify-between">
         <div>
@@ -205,7 +307,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
                     setPhoneError('');
                   }}
                   className="w-full px-3 py-2 border border-[#E4E4E4] rounded-[8px] bg-[#F6F6F6] text-xs sm:text-sm text-[#0E0E0E] placeholder-[#757575]"
-                  placeholder="e.g. Subhashish Das"
+                  placeholder="e.g. SATYAKI MUKHERJEE"
                 />
               </div>
 
@@ -225,7 +327,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
                       setPhoneError('');
                     }}
                     className="w-full px-3 py-2 border border-[#E4E4E4] rounded-r-[8px] bg-[#F6F6F6] text-xs sm:text-sm font-tabular text-[#0E0E0E] placeholder-[#757575]"
-                    placeholder="98300 12345"
+                    placeholder="70631 84118"
                   />
                 </div>
                 {phoneError && (
@@ -237,9 +339,10 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
             <div className="space-y-2 pt-1">
               <button
                 type="submit"
-                className="btn-primary w-full h-11 text-xs sm:text-sm"
+                disabled={isSending}
+                className="btn-primary w-full h-11 text-xs sm:text-sm disabled:opacity-60"
               >
-                Send verification code
+                {isSending ? 'Sending SMS...' : 'Send verification code'}
               </button>
               <button
                 type="button"
@@ -259,23 +362,40 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
                 Verification
               </span>
               <h2 className="text-[18px] sm:text-[20px] font-semibold text-[#0E0E0E] leading-tight mt-0.5">
-                Enter 4-digit code
+                Enter {otpLength}-digit code
               </h2>
               <p className="text-[11px] text-[#757575] mt-1">
-                Sent via SMS to +91 {phone}
+                Sent to +91 {phone.slice(-10)}
               </p>
             </div>
 
-            {smsBanner && (
-              <div className="p-2.5 rounded-[8px] bg-[#F2B705]/15 border border-[#F2B705]/30 text-xs text-[#0E0E0E] font-medium flex items-center justify-between">
-                <span>{smsBanner}</span>
+            {smsNotice && (
+              <div
+                className={`p-2.5 rounded-[8px] border text-xs leading-relaxed ${
+                  smsNotice.type === 'carrier'
+                    ? 'bg-[#0F7B5F]/10 border-[#0F7B5F]/25 text-[#0F7B5F] font-semibold'
+                    : 'bg-[#F2B705]/15 border-[#F2B705]/30 text-[#0E0E0E]'
+                }`}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <span>{smsNotice.message}</span>
+                  {fallbackCode && (
+                    <button
+                      type="button"
+                      onClick={handleAutoFillCode}
+                      className="px-2 py-0.5 bg-[#0E0E0E] text-[#FFFFFF] font-bold text-[10px] rounded shrink-0 hover:bg-[#262626] transition active:scale-95"
+                    >
+                      Fill {fallbackCode}
+                    </button>
+                  )}
+                </div>
               </div>
             )}
 
             <div>
               <input
                 type="text"
-                maxLength={4}
+                maxLength={otpLength}
                 autoFocus
                 required
                 value={otp}
@@ -283,8 +403,8 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
                   setOtp(e.target.value.replace(/[^0-9]/g, ''));
                   setOtpError('');
                 }}
-                className="w-full tracking-[0.8em] text-center font-code-mono text-xl sm:text-2xl font-semibold py-2.5 border border-[#E4E4E4] rounded-[8px] bg-[#F6F6F6] text-[#0E0E0E]"
-                placeholder="••••"
+                className="w-full tracking-[0.6em] text-center font-code-mono text-xl sm:text-2xl font-semibold py-2.5 border border-[#E4E4E4] rounded-[8px] bg-[#F6F6F6] text-[#0E0E0E]"
+                placeholder={otpLength === 6 ? '••••••' : '••••'}
               />
               {otpError && (
                 <p className="text-xs text-[#C8321E] mt-1 font-medium text-center">{otpError}</p>
@@ -292,14 +412,15 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
             </div>
 
             <div className="flex items-center justify-between text-xs text-[#757575] px-1">
-              <span>Didn't receive code?</span>
+              <span>Didn't receive SMS?</span>
               {canResend ? (
                 <button
                   type="button"
                   onClick={handleResendOtp}
+                  disabled={isSending}
                   className="font-semibold text-[#0E0E0E] underline cursor-pointer"
                 >
-                  Resend SMS
+                  {isSending ? 'Sending...' : 'Resend SMS'}
                 </button>
               ) : (
                 <span>Resend in {resendCountdown}s</span>
@@ -309,10 +430,10 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
             <div className="space-y-2 pt-1">
               <button
                 type="submit"
-                disabled={loading || otp.length !== 4}
+                disabled={appLoading || otp.length !== otpLength}
                 className="btn-primary w-full h-11 text-xs sm:text-sm disabled:opacity-50"
               >
-                {loading ? 'Verifying...' : 'Verify & continue'}
+                {appLoading ? 'Verifying...' : 'Verify & continue'}
               </button>
               <button
                 type="button"

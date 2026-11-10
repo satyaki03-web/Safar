@@ -10,6 +10,7 @@ interface MapCanvasProps {
   pickupLocation?: LocationPoint | null;
   destinationLocation?: LocationPoint | null;
   driverLocation?: LatLng | null;
+  userLocation?: LatLng | null;
   routeCoordinates?: LatLng[];
   isDraggablePin?: boolean;
   onPickupChange?: (point: LocationPoint) => void;
@@ -22,6 +23,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
   pickupLocation,
   destinationLocation,
   driverLocation,
+  userLocation,
   routeCoordinates,
   isDraggablePin = false,
   onPickupChange,
@@ -35,6 +37,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
   const pickupMarkerRef = useRef<L.Marker | null>(null);
   const destMarkerRef = useRef<L.Marker | null>(null);
   const driverMarkerRef = useRef<L.Marker | null>(null);
+  const userMarkerRef = useRef<L.Marker | null>(null);
   const polylineBgRef = useRef<L.Polyline | null>(null);
   const polylineFgRef = useRef<L.Polyline | null>(null);
   const nearbyMarkersRef = useRef<L.Marker[]>([]);
@@ -396,6 +399,49 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
     }
   }, [destinationLocation]);
 
+  // Update User Live Location Marker (pulsing blue dot)
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map) return;
+
+    if (!userLocation) {
+      if (userMarkerRef.current) {
+        userMarkerRef.current.remove();
+        userMarkerRef.current = null;
+      }
+      return;
+    }
+
+    const pos: [number, number] = [userLocation.lat, userLocation.lng];
+
+    const userGpsIcon = L.divIcon({
+      className: 'custom-user-gps-dot',
+      html: `
+        <div style="position: relative; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;">
+          <div style="position: absolute; width: 36px; height: 36px; background: rgba(37, 99, 235, 0.25); border-radius: 50%; border: 1px solid rgba(37, 99, 235, 0.4); animation: pulse 2s infinite ease-in-out;"></div>
+          <div style="position: relative; z-index: 2; width: 14px; height: 14px; background: #2563EB; border: 2.5px solid #FFFFFF; border-radius: 50%; box-shadow: 0 2px 6px rgba(0,0,0,0.35);"></div>
+        </div>
+      `,
+      iconSize: [36, 36],
+      iconAnchor: [18, 18],
+    });
+
+    if (!userMarkerRef.current) {
+      userMarkerRef.current = L.marker(pos, {
+        icon: userGpsIcon,
+        zIndexOffset: 1000,
+        title: 'Your Current Live Location',
+      }).addTo(map);
+
+      // On first location lock, pan map if no active route is being inspected
+      if (!pickupLocation && !driverLocation && (!routeCoordinates || routeCoordinates.length === 0)) {
+        map.setView(pos, 15, { animate: true });
+      }
+    } else {
+      userMarkerRef.current.setLatLng(pos);
+    }
+  }, [userLocation]);
+
   // Update Driver / Car Marker (yellow circle with ink car-side icon and white ring)
   useEffect(() => {
     const map = mapInstanceRef.current;
@@ -520,7 +566,9 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
     const map = mapInstanceRef.current;
     if (!map) return;
 
-    if (pickupLocation) {
+    if (userLocation) {
+      map.setView([userLocation.lat, userLocation.lng], 15, { animate: true });
+    } else if (pickupLocation) {
       map.setView([pickupLocation.lat, pickupLocation.lng], 14, { animate: true });
     } else if (driverLocation) {
       map.setView([driverLocation.lat, driverLocation.lng], 14, { animate: true });
