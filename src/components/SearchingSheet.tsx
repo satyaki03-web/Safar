@@ -3,7 +3,7 @@ import { useApp } from '../context/AppContext';
 import { Ride } from '../types';
 
 export const SearchingSheet: React.FC<{ ride: Ride }> = ({ ride }) => {
-  const { cancelRide, advanceDemoTripStep, isDemoMode } = useApp();
+  const { cancelRide } = useApp();
 
   return (
     <div className="bg-[#FFFFFF] p-4 sm:p-5 space-y-4 select-none">
@@ -30,18 +30,8 @@ export const SearchingSheet: React.FC<{ ride: Ride }> = ({ ride }) => {
           onClick={() => cancelRide(ride.id, 'owner')}
           className="text-xs sm:text-sm font-medium text-[#757575] hover:text-[#0E0E0E] transition underline cursor-pointer"
         >
-          Cancel
+          Cancel ride request
         </button>
-
-        {isDemoMode && (
-          <button
-            type="button"
-            onClick={advanceDemoTripStep}
-            className="text-xs font-medium text-[#0E0E0E] bg-[#F6F6F6] border border-[#E4E4E4] px-3 py-1.5 rounded-full hover:bg-[#E4E4E4] transition"
-          >
-            Simulate match
-          </button>
-        )}
       </div>
     </div>
   );

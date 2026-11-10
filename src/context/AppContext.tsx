@@ -52,7 +52,6 @@ interface AppContextType {
   rideHistory: Ride[];
   subscriptions: SubscriptionBooking[];
   activeSubscription: SubscriptionBooking | null;
-  isDemoMode: boolean;
   isOnline: boolean;
   firestoreConnected: boolean;
   testFirestore: () => Promise<boolean>;
@@ -105,8 +104,6 @@ interface AppContextType {
     notes?: string;
   }) => Promise<SubscriptionBooking>;
   cancelSubscription: (id: string) => Promise<void>;
-  toggleDemoMode: () => void;
-  advanceDemoTripStep: () => void;
 }
 
 const AppContext = createContext<AppContextType | null>(null);
@@ -157,17 +154,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch {}
   }, [subscriptions]);
 
-  const [isDemoMode, setIsDemoMode] = useState<boolean>(() => {
-    return localStorage.getItem('safar_demo_mode') === 'true';
-  });
-
   const [isOnline, setIsOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true);
   const [firestoreConnected, setFirestoreConnected] = useState(true);
   const [loading, setLoading] = useState(false);
-
-  // Demo simulation refs
-  const demoIntervalRef = useRef<number | null>(null);
-  const demoRouteIndexRef = useRef<number>(0);
 
   // Diagnostic connection tester for Cloud Firestore
   const testFirestore = async () => {
@@ -261,10 +250,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.setItem('safar_ride_history', JSON.stringify(rideHistory));
   }, [rideHistory]);
 
-  useEffect(() => {
-    localStorage.setItem('safar_demo_mode', isDemoMode ? 'true' : 'false');
-  }, [isDemoMode]);
-
   // Firestore Real-Time Active Ride Listener
   useEffect(() => {
     if (!user || !activeRide?.id) return;
@@ -318,105 +303,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     return () => unsubscribe();
   }, [activeRole, driverProfile?.isOnline]);
-
-  // Demo Mode Simulation Engine
-  // When activeRide is 'looking_for_driver', automatically matches a seed driver after 4 seconds
-  useEffect(() => {
-    if (!isDemoMode || !activeRide) return;
-
-    if (activeRide.status === 'looking_for_driver') {
-      const timer = window.setTimeout(async () => {
-        const seed = SEED_DRIVERS[0];
-        const updatedRide: Ride = {
-          ...activeRide,
-          status: 'driver_assigned',
-          driverId: seed.id,
-          driverName: seed.name,
-          driverPhone: seed.phone,
-          driverPhoto: seed.photoUrl,
-          driverRating: seed.rating,
-          driverTripsCount: seed.tripsCompleted,
-          driverLicenceVerified: true,
-          etaMinutes: 6,
-          driverLocation: { lat: seed.currentLat, lng: seed.currentLng },
-          updatedAt: new Date().toISOString(),
-        };
-
-        setActiveRide(updatedRide);
-
-        try {
-          await setDoc(doc(db, 'rides', updatedRide.id), cleanForFirestore(updatedRide), { merge: true });
-        } catch (e) {
-          console.warn('Firestore demo sync:', e);
-        }
-      }, 3500);
-
-      return () => clearTimeout(timer);
-    }
-
-    if (activeRide.status === 'driver_assigned') {
-      const timer = window.setTimeout(async () => {
-        const updatedRide: Ride = {
-          ...activeRide,
-          status: 'driver_en_route',
-          etaMinutes: 4,
-          driverLocation: DEMO_ROUTE_COORDINATES[1],
-          updatedAt: new Date().toISOString(),
-        };
-        setActiveRide(updatedRide);
-        try {
-          await setDoc(doc(db, 'rides', updatedRide.id), cleanForFirestore(updatedRide), { merge: true });
-        } catch (e) {
-          console.warn(e);
-        }
-      }, 4000);
-
-      return () => clearTimeout(timer);
-    }
-
-    if (activeRide.status === 'driver_en_route') {
-      const timer = window.setTimeout(async () => {
-        const updatedRide: Ride = {
-          ...activeRide,
-          status: 'driver_arrived',
-          etaMinutes: 0,
-          driverLocation: { lat: activeRide.pickupLocation.lat, lng: activeRide.pickupLocation.lng },
-          updatedAt: new Date().toISOString(),
-        };
-        setActiveRide(updatedRide);
-        try {
-          await setDoc(doc(db, 'rides', updatedRide.id), cleanForFirestore(updatedRide), { merge: true });
-        } catch (e) {
-          console.warn(e);
-        }
-      }, 4500);
-
-      return () => clearTimeout(timer);
-    }
-
-    // During live ride in demo mode, advance car position along Kolkata demo route every 4 seconds
-    if (activeRide.status === 'ride_active') {
-      demoIntervalRef.current = window.setInterval(async () => {
-        demoRouteIndexRef.current = (demoRouteIndexRef.current + 1) % DEMO_ROUTE_COORDINATES.length;
-        const nextCoord = DEMO_ROUTE_COORDINATES[demoRouteIndexRef.current];
-
-        setActiveRide((prev) => {
-          if (!prev) return null;
-          const updated: Ride = {
-            ...prev,
-            driverLocation: nextCoord,
-            updatedAt: new Date().toISOString(),
-          };
-          setDoc(doc(db, 'rides', updated.id), cleanForFirestore(updated), { merge: true }).catch(() => {});
-          return updated;
-        });
-      }, 3500);
-
-      return () => {
-        if (demoIntervalRef.current) clearInterval(demoIntervalRef.current);
-      };
-    }
-  }, [isDemoMode, activeRide?.status, activeRide?.id]);
 
   // Auth: Phone Sign-In
   const signInPhone = async (phone: string, name: string, role: UserRole) => {
@@ -987,64 +873,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const toggleDemoMode = () => {
-    setIsDemoMode((prev) => !prev);
-  };
-
-  // Helper to step through demo flow on a single screen
-  const advanceDemoTripStep = () => {
-    if (!activeRide) return;
-    if (activeRide.status === 'looking_for_driver') {
-      const seed = SEED_DRIVERS[0];
-      const updated: Ride = {
-        ...activeRide,
-        status: 'driver_assigned',
-        driverId: seed.id,
-        driverName: seed.name,
-        driverPhone: seed.phone,
-        driverPhoto: seed.photoUrl,
-        driverRating: seed.rating,
-        driverTripsCount: seed.tripsCompleted,
-        driverLicenceVerified: true,
-        etaMinutes: 5,
-        driverLocation: { lat: seed.currentLat, lng: seed.currentLng },
-        updatedAt: new Date().toISOString(),
-      };
-      setActiveRide(updated);
-      setDoc(doc(db, 'rides', updated.id), cleanForFirestore(updated), { merge: true }).catch(() => {});
-    } else if (activeRide.status === 'driver_assigned') {
-      const updated: Ride = {
-        ...activeRide,
-        status: 'driver_en_route',
-        etaMinutes: 2,
-        updatedAt: new Date().toISOString(),
-      };
-      setActiveRide(updated);
-      setDoc(doc(db, 'rides', updated.id), cleanForFirestore(updated), { merge: true }).catch(() => {});
-    } else if (activeRide.status === 'driver_en_route') {
-      const updated: Ride = {
-        ...activeRide,
-        status: 'driver_arrived',
-        etaMinutes: 0,
-        driverLocation: activeRide.pickupLocation,
-        updatedAt: new Date().toISOString(),
-      };
-      setActiveRide(updated);
-      setDoc(doc(db, 'rides', updated.id), cleanForFirestore(updated), { merge: true }).catch(() => {});
-    } else if (activeRide.status === 'driver_arrived') {
-      const updated: Ride = {
-        ...activeRide,
-        status: 'ride_active',
-        startedAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      setActiveRide(updated);
-      setDoc(doc(db, 'rides', updated.id), cleanForFirestore(updated), { merge: true }).catch(() => {});
-    } else if (activeRide.status === 'ride_active') {
-      driverEndTrip(activeRide.id);
-    }
-  };
-
   return (
     <AppContext.Provider
       value={{
@@ -1058,7 +886,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         rideHistory,
         subscriptions,
         activeSubscription,
-        isDemoMode,
         isOnline,
         firestoreConnected,
         testFirestore,
@@ -1081,8 +908,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         submitRating,
         createSubscriptionBooking,
         cancelSubscription,
-        toggleDemoMode,
-        advanceDemoTripStep,
       }}
     >
       {children}

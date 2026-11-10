@@ -3,10 +3,8 @@ import { useApp } from '../context/AppContext';
 import {
   IconClose,
   IconChevronRight,
-  IconUser,
 } from './Icons';
 import { UserAvatar } from './UserAvatar';
-import { getOlaMapsApiKey, setOlaMapsApiKey } from '../services/olaMapsService';
 
 interface SettingsAndProfileModalProps {
   isOpen: boolean;
@@ -32,18 +30,9 @@ export const SettingsAndProfileModal: React.FC<SettingsAndProfileModalProps> = (
     vehicles,
     subscriptions,
     driverProfile,
-    isDemoMode,
-    toggleDemoMode,
     signOutUser,
-    firestoreConnected,
-    testFirestore,
-    firebaseInfo,
   } = useApp();
 
-  const [olaKeyInput, setOlaKeyInput] = React.useState(getOlaMapsApiKey());
-  const [keySavedMsg, setKeySavedMsg] = React.useState('');
-  const [firebaseStatusMsg, setFirebaseStatusMsg] = React.useState<{ text: string; isError?: boolean } | null>(null);
-  const [testingFirebase, setTestingFirebase] = React.useState(false);
   const [avatarVariant, setAvatarVariant] = React.useState<'black-bg' | 'yellow-bg'>(() => {
     try {
       const stored = localStorage.getItem('safar_avatar_variant');
@@ -55,9 +44,6 @@ export const SettingsAndProfileModal: React.FC<SettingsAndProfileModalProps> = (
 
   React.useEffect(() => {
     if (isOpen) {
-      setOlaKeyInput(getOlaMapsApiKey());
-      setKeySavedMsg('');
-      setFirebaseStatusMsg(null);
       try {
         const stored = localStorage.getItem('safar_avatar_variant');
         if (stored === 'yellow-bg' || stored === 'black-on-yellow') setAvatarVariant('yellow-bg');
@@ -73,36 +59,6 @@ export const SettingsAndProfileModal: React.FC<SettingsAndProfileModalProps> = (
       window.dispatchEvent(new CustomEvent('avatar-variant-changed', { detail: { variant } }));
     } catch (e) {
       console.warn('Could not save avatar variant:', e);
-    }
-  };
-
-  const handleSaveOlaKey = () => {
-    setOlaMapsApiKey(olaKeyInput.trim());
-    setKeySavedMsg(olaKeyInput.trim() ? 'Ola Maps key saved! Map & search updated.' : 'Ola Maps key cleared. Using OpenStreetMap fallback.');
-    setTimeout(() => setKeySavedMsg(''), 3500);
-  };
-
-  const handleClearOlaKey = () => {
-    setOlaKeyInput('');
-    setOlaMapsApiKey('');
-    setKeySavedMsg('Ola Maps key cleared. Using OpenStreetMap fallback.');
-    setTimeout(() => setKeySavedMsg(''), 3500);
-  };
-
-  const handleTestFirebase = async () => {
-    setTestingFirebase(true);
-    setFirebaseStatusMsg(null);
-    try {
-      const ok = await testFirestore();
-      setFirebaseStatusMsg({
-        text: ok
-          ? 'Cloud Firestore & Firebase Auth operational! Live collections synchronized.'
-          : 'Firestore connection unreachable. Check network or rules permissions.',
-        isError: !ok,
-      });
-      setTimeout(() => setFirebaseStatusMsg(null), 4000);
-    } finally {
-      setTestingFirebase(false);
     }
   };
 
@@ -154,7 +110,7 @@ export const SettingsAndProfileModal: React.FC<SettingsAndProfileModalProps> = (
               <span className="text-[10px] text-[#757575]">Taxi Black & Yellow</span>
             </div>
             <div className="grid grid-cols-2 gap-2">
-              {/* Option 1: Black / Yellow (Black BG, Yellow text) */}
+              {/* Option 1: Black / Yellow */}
               <button
                 type="button"
                 onClick={() => handleSetAvatarVariant('black-bg')}
@@ -170,7 +126,7 @@ export const SettingsAndProfileModal: React.FC<SettingsAndProfileModalProps> = (
                 <span>Black / Yellow</span>
               </button>
 
-              {/* Option 2: Yellow / Black (Yellow BG, Black text) */}
+              {/* Option 2: Yellow / Black */}
               <button
                 type="button"
                 onClick={() => handleSetAvatarVariant('yellow-bg')}
@@ -219,7 +175,7 @@ export const SettingsAndProfileModal: React.FC<SettingsAndProfileModalProps> = (
             </div>
           </div>
 
-          {/* Manage Links */}
+          {/* Account Services & Features */}
           <div className="space-y-0 border-t border-b border-[#E4E4E4]">
             <button
               type="button"
@@ -315,206 +271,21 @@ export const SettingsAndProfileModal: React.FC<SettingsAndProfileModalProps> = (
                   </span>
                 </div>
                 <span className="text-xs text-[#757575] block mt-0.5">
-                  Dedicated chauffeur contracts with backup guarantee
+                  Dedicated chauffeur contracts with replacement guarantee
                 </span>
               </div>
               <IconChevronRight size={16} className="text-[#757575]" />
             </button>
           </div>
 
-          {/* Demo Mode Toggle */}
-          <div className="flex items-center justify-between py-2 border-b border-[#E4E4E4] pb-4">
-            <div>
-              <span className="text-sm font-medium text-[#0E0E0E] block">
-                Demo simulation
-              </span>
-              <span className="text-xs text-[#757575] block mt-0.5">
-                Simulate driver movement along Kolkata corridor
-              </span>
-            </div>
-            <button
-              type="button"
-              onClick={toggleDemoMode}
-              className={`w-12 h-7 rounded-full transition p-1 cursor-pointer flex items-center ${
-                isDemoMode ? 'bg-[#0E0E0E] justify-end' : 'bg-[#E4E4E4] justify-start'
-              }`}
-            >
-              <div className="w-5 h-5 rounded-full bg-[#FFFFFF] shadow-sm" />
-            </button>
-          </div>
-
-          {/* Replay App Launch Animation */}
-          <div className="flex items-center justify-between py-2 border-b border-[#E4E4E4] pb-4">
-            <div>
-              <span className="text-sm font-medium text-[#0E0E0E] block">
-                Opening screen animation
-              </span>
-              <span className="text-xs text-[#757575] block mt-0.5">
-                Uber-style animated brand entrance
-              </span>
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                onClose();
-                window.dispatchEvent(new CustomEvent('replay-intro'));
-              }}
-              className="px-3 py-1.5 rounded-[6px] bg-[#0E0E0E] hover:bg-[#262626] text-[#FFFFFF] text-xs font-semibold transition cursor-pointer"
-            >
-              Play intro
-            </button>
-          </div>
-
-          {/* Ola Maps Configuration */}
-          <div className="space-y-2.5 p-3.5 bg-[#F6F6F6] border border-[#E4E4E4] rounded-[10px]">
-            <div className="flex items-center justify-between">
-              <div>
-                <span className="text-xs font-semibold text-[#0E0E0E] block">
-                  Ola Maps API Integration
-                </span>
-                <span className="text-[11px] text-[#757575] block mt-0.5">
-                  Krutrim vector tiles, places autocomplete & routing
-                </span>
-              </div>
-              <span
-                className={`text-[11px] font-semibold px-2 py-0.5 rounded-full flex items-center gap-1.5 ${
-                  getOlaMapsApiKey()
-                    ? 'bg-[#0F7B5F]/10 text-[#0F7B5F] border border-[#0F7B5F]/20'
-                    : 'bg-[#FFFFFF] text-[#757575] border border-[#E4E4E4]'
-                }`}
-              >
-                <span
-                  className={`w-1.5 h-1.5 rounded-full ${
-                    getOlaMapsApiKey() ? 'bg-[#0F7B5F]' : 'bg-[#757575]'
-                  }`}
-                />
-                {getOlaMapsApiKey() ? 'Active' : 'Fallback (OSM)'}
-              </span>
-            </div>
-
-            <div className="space-y-1.5 pt-1">
-              <input
-                type="text"
-                value={olaKeyInput}
-                onChange={(e) => setOlaKeyInput(e.target.value)}
-                placeholder="Enter or paste your Ola Maps API key..."
-                className="w-full h-9 px-3 bg-[#FFFFFF] border border-[#E4E4E4] rounded-[6px] text-xs text-[#0E0E0E] placeholder-[#757575] focus:border-[#0E0E0E] font-mono tracking-tight transition"
-              />
-
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={handleSaveOlaKey}
-                  className="px-3 py-1.5 rounded-[6px] bg-[#0E0E0E] text-[#FFFFFF] text-xs font-semibold hover:bg-[#262626] transition cursor-pointer"
-                >
-                  Save & apply
-                </button>
-                {getOlaMapsApiKey() && (
-                  <button
-                    type="button"
-                    onClick={handleClearOlaKey}
-                    className="px-3 py-1.5 rounded-[6px] bg-[#FFFFFF] text-[#757575] hover:text-[#0E0E0E] border border-[#E4E4E4] text-xs font-medium transition cursor-pointer"
-                  >
-                    Clear key
-                  </button>
-                )}
-              </div>
-
-              {keySavedMsg && (
-                <div className="text-[11px] font-medium text-[#0F7B5F] bg-[#FFFFFF] p-1.5 rounded border border-[#E4E4E4]">
-                  {keySavedMsg}
-                </div>
-              )}
-
-              <p className="text-[11px] text-[#757575] leading-normal pt-1">
-                Tip: In your Krutrim Cloud Console, ensure your API key has <strong>Places & Tiles</strong> services enabled. If direct browser calls return 401 Unauthorized, verify that domain whitelisting is added or that the key is configured for web or package <code className="font-mono text-[#0E0E0E]">com.safar.app</code>.
-              </p>
-            </div>
-          </div>
-
-          {/* Cloud Firestore & Firebase Authentication Status */}
-          <div className="space-y-3 p-3.5 bg-[#F6F6F6] border border-[#E4E4E4] rounded-[10px]">
-            <div className="flex items-center justify-between">
-              <div>
-                <span className="text-xs font-semibold text-[#0E0E0E] block">
-                  Google Cloud Firestore & Auth
-                </span>
-                <span className="text-[11px] text-[#757575] block mt-0.5">
-                  Real-time database, owner/driver security rules & live dispatch
-                </span>
-              </div>
-              <span
-                className={`text-[11px] font-semibold px-2 py-0.5 rounded-full flex items-center gap-1.5 ${
-                  firestoreConnected
-                    ? 'bg-[#0F7B5F]/10 text-[#0F7B5F] border border-[#0F7B5F]/20'
-                    : 'bg-[#F2B705]/15 text-[#9A7204] border border-[#F2B705]/30'
-                }`}
-              >
-                <span
-                  className={`w-1.5 h-1.5 rounded-full ${
-                    firestoreConnected ? 'bg-[#0F7B5F]' : 'bg-[#F2B705]'
-                  }`}
-                />
-                {firestoreConnected ? 'Connected' : 'Reconnecting...'}
-              </span>
-            </div>
-
-            <div className="space-y-2 pt-0.5">
-              <div className="bg-[#FFFFFF] p-2.5 rounded-[6px] border border-[#E4E4E4] text-[11px] space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <span className="text-[#757575]">Project ID:</span>
-                  <span className="font-mono font-medium text-[#0E0E0E] text-[10px]">
-                    {firebaseInfo.projectId}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-[#757575]">Database ID:</span>
-                  <span className="font-mono font-medium text-[#0E0E0E] text-[10px]">
-                    {firebaseInfo.firestoreDatabaseId}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-[#757575]">Firebase Auth:</span>
-                  <span className="font-mono font-medium text-[#0F7B5F] text-[10px]">
-                    {firebaseInfo.currentUid ? `Active (${firebaseInfo.currentUid.slice(0, 10)}...)` : 'Authenticated'}
-                  </span>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 pt-0.5">
-                <button
-                  type="button"
-                  onClick={handleTestFirebase}
-                  disabled={testingFirebase}
-                  className="px-3 py-1.5 rounded-[6px] bg-[#0E0E0E] text-[#FFFFFF] text-xs font-semibold hover:bg-[#262626] transition cursor-pointer disabled:opacity-50"
-                >
-                  {testingFirebase ? 'Pinging Firestore...' : 'Test Firestore connection'}
-                </button>
-              </div>
-
-              {firebaseStatusMsg && (
-                <div
-                  className={`text-[11px] font-medium p-2 rounded border leading-tight ${
-                    firebaseStatusMsg.isError
-                      ? 'bg-[#C8321E]/10 border-[#C8321E]/30 text-[#C8321E]'
-                      : 'bg-[#0F7B5F]/10 border-[#0F7B5F]/30 text-[#0F7B5F]'
-                  }`}
-                >
-                  {firebaseStatusMsg.text}
-                </div>
-              )}
-
-              <div className="text-[11px] text-[#757575] bg-[#FFFFFF] p-2.5 rounded-[6px] border border-[#E4E4E4] space-y-1">
-                <div className="font-semibold text-[#0E0E0E]">Active Firestore Architecture:</div>
-                <ul className="list-disc list-inside space-y-0.5 text-[#757575]">
-                  <li><strong>/users/{'{uid}'}</strong>: Phone auth, role profile, and preferences.</li>
-                  <li><strong>/driverProfiles/{'{driverId}'}</strong>: WB licence verification, ratings, and stats.</li>
-                  <li><strong>/vehicles/{'{vehicleId}'}</strong>: Owner car registration, transmission & fuel type.</li>
-                  <li><strong>/rides/{'{rideId}'}</strong>: Real-time driver dispatch, GPS tracking & 4-digit OTP.</li>
-                  <li><strong>/subscriptions/{'{subId}'}</strong>: Recurring chauffeur packages (weekly/monthly).</li>
-                </ul>
-              </div>
-            </div>
+          {/* Safar Production Help & Support Card */}
+          <div className="p-3 bg-[#F6F6F6] rounded-[8px] border border-[#E4E4E4] text-[11px] space-y-1">
+            <span className="font-semibold text-[#0E0E0E] block">
+              Safar Chauffeur Network • Kolkata
+            </span>
+            <p className="text-[#757575] leading-normal">
+              Direct peer-to-peer driver hire for personal vehicle owners. 24/7 Roadside Assistance & Verified WB Transport Authority drivers.
+            </p>
           </div>
 
           {/* Sign Out */}

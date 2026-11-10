@@ -23,12 +23,9 @@ function MainApp() {
 
   React.useEffect(() => {
     const handleOpenSettings = () => setShowSettings(true);
-    const handleReplayIntro = () => setShowOpeningIntro(true);
     window.addEventListener('open-settings', handleOpenSettings);
-    window.addEventListener('replay-intro', handleReplayIntro);
     return () => {
       window.removeEventListener('open-settings', handleOpenSettings);
-      window.removeEventListener('replay-intro', handleReplayIntro);
     };
   }, []);
 

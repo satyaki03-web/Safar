@@ -4,7 +4,7 @@ import { Ride } from '../types';
 import { IconCheck, IconPhone, IconMessage, IconStar } from './Icons';
 
 export const DriverAssignedSheet: React.FC<{ ride: Ride }> = ({ ride }) => {
-  const { advanceDemoTripStep, isDemoMode, cancelRide } = useApp();
+  const { cancelRide } = useApp();
 
   const isArrived = ride.status === 'driver_arrived';
 
@@ -145,25 +145,15 @@ export const DriverAssignedSheet: React.FC<{ ride: Ride }> = ({ ride }) => {
         </div>
       </div>
 
-      {/* Actions / Demo Step */}
+      {/* Actions */}
       <div className="flex items-center justify-between pt-1 border-t border-[#E4E4E4]">
         <button
           type="button"
           onClick={() => cancelRide(ride.id, 'owner')}
           className="text-xs text-[#757575] hover:text-[#C8321E] transition underline cursor-pointer"
         >
-          Cancel
+          Cancel booking
         </button>
-
-        {isDemoMode && (
-          <button
-            type="button"
-            onClick={advanceDemoTripStep}
-            className="text-[11px] font-medium text-[#0E0E0E] bg-[#F6F6F6] border border-[#E4E4E4] px-3 py-1 rounded-full hover:bg-[#E4E4E4] transition"
-          >
-            {isArrived ? 'Simulate start' : 'Advance arrival'}
-          </button>
-        )}
       </div>
     </div>
   );

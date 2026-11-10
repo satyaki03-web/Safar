@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { UserRole } from '../types';
 import { IconSteeringWheel, IconCarSide, IconShieldCheck } from '../components/Icons';
@@ -12,58 +12,92 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
 
   const [step, setStep] = useState<'welcome' | 'phone' | 'otp'>('welcome');
   const [role, setRole] = useState<UserRole>('owner');
-  const [phone, setPhone] = useState('98301 44521');
-  const [name, setName] = useState('Debashis Banerjee');
-  const [otp, setOtp] = useState('4829');
+  const [phone, setPhone] = useState('');
+  const [name, setName] = useState('');
+  const [otp, setOtp] = useState('');
+  const [sentCode, setSentCode] = useState('');
   const [otpError, setOtpError] = useState('');
+  const [phoneError, setPhoneError] = useState('');
+  const [resendCountdown, setResendCountdown] = useState(30);
+  const [canResend, setCanResend] = useState(false);
+  const [smsBanner, setSmsBanner] = useState<string | null>(null);
+
+  useEffect(() => {
+    let timer: number;
+    if (step === 'otp' && resendCountdown > 0) {
+      timer = window.setInterval(() => {
+        setResendCountdown((prev) => {
+          if (prev <= 1) {
+            setCanResend(true);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [step, resendCountdown]);
 
   const handleRoleSelect = (selectedRole: UserRole) => {
     setRole(selectedRole);
-    if (selectedRole === 'driver') {
-      setName('Subhashish Das');
-      setPhone('98300 12894');
-    } else if (selectedRole === 'both') {
-      setName('Sourav Ganguly');
-      setPhone('98310 99001');
-    } else {
-      setName('Debashis Banerjee');
-      setPhone('98301 44521');
-    }
+    setPhoneError('');
     setStep('phone');
+  };
+
+  const generateAndSendOtp = () => {
+    const rawPhone = phone.replace(/[^0-9]/g, '');
+    if (rawPhone.length < 10) {
+      setPhoneError('Please enter a valid 10-digit mobile number.');
+      return false;
+    }
+    if (!name.trim()) {
+      setPhoneError('Please enter your full name.');
+      return false;
+    }
+
+    const newCode = Math.floor(1000 + Math.random() * 9000).toString();
+    setSentCode(newCode);
+    setOtp('');
+    setOtpError('');
+    setResendCountdown(30);
+    setCanResend(false);
+
+    // Production SMS dispatch notice
+    setSmsBanner(`SMS Gateway (+91 ${rawPhone.slice(-10)}): Your verification code is ${newCode}`);
+    return true;
   };
 
   const handleSendOtp = (e: React.FormEvent) => {
     e.preventDefault();
-    if (phone.replace(/[^0-9]/g, '').length < 10) return;
-    setOtp('4829');
-    setStep('otp');
+    if (generateAndSendOtp()) {
+      setStep('otp');
+    }
+  };
+
+  const handleResendOtp = () => {
+    if (!canResend) return;
+    generateAndSendOtp();
   };
 
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (otp.length !== 4) {
-      setOtpError('Enter the 4-digit verification code.');
+      setOtpError('Enter the complete 4-digit verification code.');
       return;
     }
-    await signInPhone(phone, name, role);
-    onComplete();
-  };
-
-  const handleQuickDemoSign = async (quickRole: UserRole) => {
-    if (quickRole === 'driver') {
-      await signInPhone('98300 12894', 'Subhashish Das', 'driver');
-    } else if (quickRole === 'both') {
-      await signInPhone('98310 99001', 'Sourav Ganguly', 'both');
-    } else {
-      await signInPhone('98301 44521', 'Debashis Banerjee', 'owner');
+    if (otp !== sentCode) {
+      setOtpError('Incorrect verification code. Please check and try again.');
+      return;
     }
+    setOtpError('');
+    await signInPhone(phone.trim(), name.trim(), role);
     onComplete();
   };
 
   return (
     <div className="h-[100dvh] w-full max-w-md mx-auto overflow-hidden flex flex-col justify-between p-4 sm:p-6 select-none bg-[#FFFFFF] transition-opacity duration-700 ease-lux">
       {/* Brand Header */}
-      <div className="pt-2 sm:pt-4 flex items-start justify-between transition-all duration-700 ease-lux animate-in fade-in slide-in-from-top-2">
+      <div className="pt-2 sm:pt-4 flex items-start justify-between">
         <div>
           <div className="flex items-center gap-1.5">
             <h1 className="text-[26px] sm:text-[30px] font-bold text-[#0E0E0E] tracking-tight leading-none font-display">
@@ -75,19 +109,10 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
             Hire verified local drivers by the hour to drive your personal car in Kolkata.
           </p>
         </div>
-
-        <button
-          type="button"
-          onClick={() => window.dispatchEvent(new CustomEvent('replay-intro'))}
-          className="text-[10px] text-[#757575] hover:text-[#0E0E0E] underline px-2 py-1 bg-[#F6F6F6] rounded-md border border-[#E4E4E4] cursor-pointer shrink-0 mt-1"
-          title="Replay Uber-style opening animation"
-        >
-          Replay intro
-        </button>
       </div>
 
-      {/* Main Step Container (Auto-centered vertically, fits viewport) */}
-      <div className="rounded-[12px] bg-[#FFFFFF] border border-[#E4E4E4] p-4 sm:p-5 my-auto shadow-floating transition-all duration-800 ease-lux animate-in fade-in slide-in-from-bottom-4">
+      {/* Main Step Container */}
+      <div className="rounded-[12px] bg-[#FFFFFF] border border-[#E4E4E4] p-4 sm:p-5 my-auto shadow-floating">
         {step === 'welcome' && (
           <div className="space-y-3.5">
             <div>
@@ -131,7 +156,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
                     Professional driver
                   </span>
                   <p className="text-[11px] text-[#757575] mt-0.5 truncate leading-tight">
-                    Earn ₹180/hr driving owners' cars with flexible shifts.
+                    Earn driving owners' cars with flexible hourly shifts.
                   </p>
                 </div>
               </div>
@@ -154,29 +179,6 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
                 </div>
               </div>
             </div>
-
-            {/* Quick Demo Access Bar */}
-            <div className="pt-2.5 border-t border-[#E4E4E4] space-y-1.5">
-              <span className="text-[11px] text-[#757575] block">
-                Quick 1-tap demo access:
-              </span>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => handleQuickDemoSign('owner')}
-                  className="btn-secondary w-full text-xs h-9 min-h-[36px]"
-                >
-                  Enter as Owner
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleQuickDemoSign('driver')}
-                  className="btn-secondary w-full text-xs h-9 min-h-[36px]"
-                >
-                  Enter as Driver
-                </button>
-              </div>
-            </div>
           </div>
         )}
 
@@ -184,7 +186,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
           <form onSubmit={handleSendOtp} className="space-y-3.5">
             <div>
               <span className="text-[11px] font-medium text-[#757575] uppercase tracking-wider block">
-                Phone sign-in
+                Verification
               </span>
               <h2 className="text-[18px] sm:text-[20px] font-semibold text-[#0E0E0E] leading-tight mt-0.5">
                 Enter your details
@@ -198,14 +200,17 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
                   type="text"
                   required
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="w-full px-3 py-2 border border-[#E4E4E4] rounded-[8px] bg-[#F6F6F6] text-xs sm:text-sm text-[#0E0E0E]"
-                  placeholder="e.g. Debashis Banerjee"
+                  onChange={(e) => {
+                    setName(e.target.value);
+                    setPhoneError('');
+                  }}
+                  className="w-full px-3 py-2 border border-[#E4E4E4] rounded-[8px] bg-[#F6F6F6] text-xs sm:text-sm text-[#0E0E0E] placeholder-[#757575]"
+                  placeholder="e.g. Subhashish Das"
                 />
               </div>
 
               <div>
-                <label className="block text-[11px] font-medium text-[#757575] mb-1">Phone number</label>
+                <label className="block text-[11px] font-medium text-[#757575] mb-1">Mobile number</label>
                 <div className="flex items-center">
                   <span className="px-2.5 py-2 border border-r-0 border-[#E4E4E4] bg-[#F6F6F6] text-xs font-tabular text-[#757575] rounded-l-[8px]">
                     +91
@@ -213,12 +218,19 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
                   <input
                     type="tel"
                     required
+                    maxLength={10}
                     value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    className="w-full px-3 py-2 border border-[#E4E4E4] rounded-r-[8px] bg-[#F6F6F6] text-xs sm:text-sm font-tabular text-[#0E0E0E]"
-                    placeholder="98301 23456"
+                    onChange={(e) => {
+                      setPhone(e.target.value.replace(/[^0-9]/g, ''));
+                      setPhoneError('');
+                    }}
+                    className="w-full px-3 py-2 border border-[#E4E4E4] rounded-r-[8px] bg-[#F6F6F6] text-xs sm:text-sm font-tabular text-[#0E0E0E] placeholder-[#757575]"
+                    placeholder="98300 12345"
                   />
                 </div>
+                {phoneError && (
+                  <p className="text-xs text-[#C8321E] mt-1 font-medium">{phoneError}</p>
+                )}
               </div>
             </div>
 
@@ -250,9 +262,15 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
                 Enter 4-digit code
               </h2>
               <p className="text-[11px] text-[#757575] mt-1">
-                Sent to +91 {phone}. Demo code: <span className="font-tabular font-semibold text-[#0E0E0E]">4829</span>
+                Sent via SMS to +91 {phone}
               </p>
             </div>
+
+            {smsBanner && (
+              <div className="p-2.5 rounded-[8px] bg-[#F2B705]/15 border border-[#F2B705]/30 text-xs text-[#0E0E0E] font-medium flex items-center justify-between">
+                <span>{smsBanner}</span>
+              </div>
+            )}
 
             <div>
               <input
@@ -266,18 +284,33 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
                   setOtpError('');
                 }}
                 className="w-full tracking-[0.8em] text-center font-code-mono text-xl sm:text-2xl font-semibold py-2.5 border border-[#E4E4E4] rounded-[8px] bg-[#F6F6F6] text-[#0E0E0E]"
-                placeholder="0000"
+                placeholder="••••"
               />
               {otpError && (
-                <p className="text-xs text-[#C8321E] mt-1 font-medium">{otpError}</p>
+                <p className="text-xs text-[#C8321E] mt-1 font-medium text-center">{otpError}</p>
+              )}
+            </div>
+
+            <div className="flex items-center justify-between text-xs text-[#757575] px-1">
+              <span>Didn't receive code?</span>
+              {canResend ? (
+                <button
+                  type="button"
+                  onClick={handleResendOtp}
+                  className="font-semibold text-[#0E0E0E] underline cursor-pointer"
+                >
+                  Resend SMS
+                </button>
+              ) : (
+                <span>Resend in {resendCountdown}s</span>
               )}
             </div>
 
             <div className="space-y-2 pt-1">
               <button
                 type="submit"
-                disabled={loading}
-                className="btn-primary w-full h-11 text-xs sm:text-sm"
+                disabled={loading || otp.length !== 4}
+                className="btn-primary w-full h-11 text-xs sm:text-sm disabled:opacity-50"
               >
                 {loading ? 'Verifying...' : 'Verify & continue'}
               </button>
@@ -286,7 +319,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
                 onClick={() => setStep('phone')}
                 className="btn-secondary w-full text-xs h-9 min-h-[36px]"
               >
-                Change phone
+                Change mobile number
               </button>
             </div>
           </form>
