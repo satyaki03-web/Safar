@@ -1,0 +1,89 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Default deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Users collection
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow create, update: if isOwner(userId);
+      allow delete: if false;
+    }
+
+    // Vehicles collection
+    match /vehicles/{vehicleId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+    }
+
+    // Driver profiles collection
+    match /driverProfiles/{driverId} {
+      allow read: if isSignedIn();
+      allow create, update: if isOwner(driverId);
+      allow delete: if isOwner(driverId);
+    }
+
+    // Rides collection
+    match /rides/{rideId} {
+      allow read: if isSignedIn() && (
+        resource.data.ownerId == request.auth.uid ||
+        resource.data.driverId == request.auth.uid ||
+        resource.data.status == 'looking_for_driver'
+      );
+      
+      allow create: if isSignedIn() && 
+        request.resource.data.ownerId == request.auth.uid &&
+        request.resource.data.status == 'looking_for_driver';
+
+      allow update: if isSignedIn() && (
+        // Driver accepting an open ride
+        (resource.data.status == 'looking_for_driver' &&
+         request.resource.data.status == 'driver_assigned' &&
+         request.resource.data.driverId == request.auth.uid) ||
+        // Ride participant updates (owner or assigned driver)
+        (resource.data.ownerId == request.auth.uid || resource.data.driverId == request.auth.uid)
+      );
+
+      allow delete: if isSignedIn() && resource.data.ownerId == request.auth.uid && resource.data.status == 'looking_for_driver';
+    }
+
+    // Ratings collection
+    match /ratings/{ratingId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() &&
+        request.resource.data.raterId == request.auth.uid &&
+        request.resource.data.score >= 1 &&
+        request.resource.data.score <= 5;
+      allow update, delete: if false;
+    }
+
+    // Subscriptions collection (weekly/monthly recurring driver bookings)
+    match /subscriptions/{subscriptionId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow update: if isSignedIn() && (
+        resource.data.ownerId == request.auth.uid ||
+        resource.data.driverId == request.auth.uid
+      );
+      allow delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+    }
+
+    // Connection test collection
+    match /test/connection {
+      allow read: if true;
+    }
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "@@locale": "bn",
+  "appTitle": "সফর",
+  "appSubtitle": "ড্রাইভার-অ্যাজ-আ-সার্ভিস",
+  "findDriver": "ড্রাইভার খুঁজুন",
+  "confirmBooking": "বুকিং নিশ্চিত করুন",
+  "startTrip": "যাত্রা শুরু",
+  "endTrip": "যাত্রা সমাপ্ত",
+  "baseRate": "বেস রেট",
+  "nightSurcharge": "নাইট সারচার্জ",
+  "platformFee": "প্ল্যাটফর্ম এবং সুরক্ষা ফি",
+  "totalEstimatedFare": "মোট আনুমানিক ভাড়া",
+  "driverBrief": "ড্রাইভার নির্দেশিকা",
+  "timeBlockScrubber": "টাইম ব্লক স্ক্রাবার",
+  "tripCover": "ট্রিপ কভার: শীঘ্রই আসছে: প্রতি-ট্রিপ মাইক্রো-ইন্সুরেন্স",
+  "sosEmergency": "জরুরী এসওএস (১১২)",
+  "tripStartCode": "ট্রিপ স্টার্ট কোড",
+  "ownerRole": "গাড়ির মালিক",
+  "driverRole": "পেশাদার ড্রাইভার"
+}

@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <title>Safar | Hire a driver by the hour</title>
+    <meta name="description" content="Peer-to-peer Driver-as-a-Service marketplace in Kolkata. Hire verified local drivers by the hour or trip for your own car." />
+    
+    <!-- Open Graph -->
+    <meta property="og:title" content="Safar | Hire a driver by the hour" />
+    <meta property="og:description" content="Peer-to-peer Driver-as-a-Service marketplace in Kolkata. Hire verified local drivers by the hour or trip for your own car." />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+
+    <!-- Mobile & PWA -->
+    <meta name="theme-color" content="#F2B705" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Safar" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+
+    <!-- Google Fonts: Bricolage Grotesque (headings/brand) & Montserrat (body/ui) & JetBrains Mono (4-digit code) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=Montserrat:ital,wght@0,400..700;1,400..700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet" />
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+
+    <!-- Ultra-fast Map Tile CDN Preconnect -->
+    <link rel="preconnect" href="https://a.tile.openstreetmap.org" crossorigin />
+    <link rel="preconnect" href="https://b.tile.openstreetmap.org" crossorigin />
+    <link rel="preconnect" href="https://c.tile.openstreetmap.org" crossorigin />
+    <link rel="dns-prefetch" href="https://a.tile.openstreetmap.org" />
+    <link rel="dns-prefetch" href="https://b.tile.openstreetmap.org" />
+    <link rel="dns-prefetch" href="https://c.tile.openstreetmap.org" />
+    <link rel="preconnect" href="https://api.olamaps.io" />
+    <link rel="dns-prefetch" href="https://api.olamaps.io" />
+  </head>
+  <body class="bg-[#FFFFFF] text-[#0E0E0E] antialiased select-none selection:bg-[#F2B705] selection:text-[#0E0E0E]">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

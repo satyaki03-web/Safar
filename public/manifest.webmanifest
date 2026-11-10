@@ -1,0 +1,26 @@
+{
+  "id": "/",
+  "name": "Safar | Hire a driver by the hour",
+  "short_name": "Safar",
+  "description": "Peer-to-peer Driver-as-a-Service marketplace for Kolkata, India. Hire verified drivers for your own car.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F5F0E6",
+  "theme_color": "#F2B705",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/favicon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

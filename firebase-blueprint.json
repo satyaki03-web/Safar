@@ -1,0 +1,164 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User account profile for Safar",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 100 },
+        "phone": { "type": "string", "maxLength": 20 },
+        "role": { "type": "string", "enum": ["owner", "driver", "both"] },
+        "currentRole": { "type": "string", "enum": ["owner", "driver"] },
+        "avatarUrl": { "type": "string", "maxLength": 500 },
+        "createdAt": { "type": "string", "maxLength": 50 },
+        "updatedAt": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["uid", "name", "phone", "role", "currentRole"]
+    },
+    "Vehicle": {
+      "title": "Vehicle",
+      "description": "Owner registered vehicle",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "ownerId": { "type": "string", "maxLength": 128 },
+        "make": { "type": "string", "maxLength": 50 },
+        "model": { "type": "string", "maxLength": 50 },
+        "year": { "type": "number" },
+        "registrationNumber": { "type": "string", "maxLength": 30 },
+        "transmission": { "type": "string", "enum": ["manual", "automatic"] },
+        "fuelType": { "type": "string", "enum": ["petrol", "diesel", "cng", "ev"] },
+        "createdAt": { "type": "string", "maxLength": 50 },
+        "updatedAt": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["ownerId", "make", "model", "registrationNumber", "transmission", "fuelType"]
+    },
+    "DriverProfile": {
+      "title": "DriverProfile",
+      "description": "Commercial driver profile and real-time dispatch state",
+      "type": "object",
+      "properties": {
+        "driverId": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 100 },
+        "phone": { "type": "string", "maxLength": 20 },
+        "photoUrl": { "type": "string", "maxLength": 500 },
+        "licenceNumber": { "type": "string", "maxLength": 50 },
+        "licenceExpiry": { "type": "string", "maxLength": 30 },
+        "experienceYears": { "type": "number" },
+        "verificationStatus": { "type": "string", "enum": ["pending", "verified", "rejected"] },
+        "isOnline": { "type": "boolean" },
+        "currentLat": { "type": "number" },
+        "currentLng": { "type": "number" },
+        "rating": { "type": "number" },
+        "tripsCompleted": { "type": "number" },
+        "totalEarnings": { "type": "number" },
+        "todayEarnings": { "type": "number" },
+        "weekEarnings": { "type": "number" },
+        "createdAt": { "type": "string", "maxLength": 50 },
+        "updatedAt": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["driverId", "name", "phone", "licenceNumber", "verificationStatus", "isOnline"]
+    },
+    "Ride": {
+      "title": "Ride",
+      "description": "Peer-to-peer Driver hire booking and trip state machine",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "ownerId": { "type": "string", "maxLength": 128 },
+        "ownerName": { "type": "string", "maxLength": 100 },
+        "ownerPhone": { "type": "string", "maxLength": 20 },
+        "driverId": { "type": "string", "maxLength": 128 },
+        "driverName": { "type": "string", "maxLength": 100 },
+        "driverPhone": { "type": "string", "maxLength": 20 },
+        "driverPhoto": { "type": "string", "maxLength": 500 },
+        "driverRating": { "type": "number" },
+        "driverTripsCount": { "type": "number" },
+        "status": {
+          "type": "string",
+          "enum": [
+            "looking_for_driver",
+            "driver_assigned",
+            "driver_en_route",
+            "driver_arrived",
+            "ride_active",
+            "completed",
+            "cancelled_by_owner",
+            "cancelled_by_driver",
+            "expired"
+          ]
+        },
+        "tripType": { "type": "string", "enum": ["commute", "evening_out", "outstation", "airport"] },
+        "startTime": { "type": "string", "maxLength": 50 },
+        "durationHours": { "type": "number" },
+        "outstationDays": { "type": "number" },
+        "otp": { "type": "string", "maxLength": 10 },
+        "etaMinutes": { "type": "number" },
+        "paymentStatus": { "type": "string", "enum": ["pending", "paid"] },
+        "paymentMethod": { "type": "string", "maxLength": 50 },
+        "paymentReference": { "type": "string", "maxLength": 100 },
+        "createdAt": { "type": "string", "maxLength": 50 },
+        "updatedAt": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["ownerId", "ownerName", "ownerPhone", "status", "tripType", "durationHours", "otp"]
+    },
+    "Rating": {
+      "title": "Rating",
+      "description": "Mutual post-trip 1 to 5 rating review",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "rideId": { "type": "string", "maxLength": 128 },
+        "raterId": { "type": "string", "maxLength": 128 },
+        "raterRole": { "type": "string", "enum": ["owner", "driver"] },
+        "targetUserId": { "type": "string", "maxLength": 128 },
+        "score": { "type": "number" },
+        "note": { "type": "string", "maxLength": 500 },
+        "createdAt": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["rideId", "raterId", "raterRole", "targetUserId", "score"]
+    },
+    "Subscription": {
+      "title": "Subscription",
+      "description": "Weekly and monthly recurring driver booking contracts",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "ownerId": { "type": "string", "maxLength": 128 },
+        "driverId": { "type": "string", "maxLength": 128 },
+        "planType": { "type": "string", "enum": ["week", "month", "custom_days"] },
+        "status": { "type": "string", "enum": ["active", "scheduled", "completed", "cancelled"] },
+        "totalFare": { "type": "number" },
+        "createdAt": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["ownerId", "driverId", "planType", "status", "totalFare"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profile with role and contact information"
+    },
+    "/vehicles/{vehicleId}": {
+      "schema": "Vehicle",
+      "description": "Owner registered vehicles"
+    },
+    "/driverProfiles/{driverId}": {
+      "schema": "DriverProfile",
+      "description": "Verified driver documentation and availability state"
+    },
+    "/rides/{rideId}": {
+      "schema": "Ride",
+      "description": "Ride requests, active trips, and completed orders"
+    },
+    "/ratings/{ratingId}": {
+      "schema": "Rating",
+      "description": "Post-trip review entries between owner and driver"
+    },
+    "/subscriptions/{subscriptionId}": {
+      "schema": "Subscription",
+      "description": "Weekly and monthly recurring driver booking contracts"
+    }
+  }
+}

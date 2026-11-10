@@ -1,0 +1,277 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --color-ink: #0E0E0E;
+    --color-white: #FFFFFF;
+    --color-grey-50: #F6F6F6;
+    --color-grey-200: #E4E4E4;
+    --color-grey-500: #757575;
+    --color-yellow: #F2B705;
+    --color-green: #0F7B5F;
+    --color-red: #C8321E;
+
+    font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, sans-serif;
+    color: var(--color-ink);
+    background-color: var(--color-white);
+  }
+
+  body {
+    background-color: var(--color-white);
+    color: var(--color-ink);
+    margin: 0;
+    padding: 0;
+    -webkit-font-smoothing: antialiased;
+    font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+
+  h1, h2, h3, h4, .font-display {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    letter-spacing: -0.02em;
+  }
+
+  /* Focus visible accessibility ring */
+  button:focus-visible, input:focus-visible, a:focus-visible {
+    outline: 2px solid #0E0E0E;
+    outline-offset: 2px;
+  }
+}
+
+/* Typography Utility Classes */
+.font-display {
+  font-family: 'Bricolage Grotesque', sans-serif;
+  letter-spacing: -0.02em;
+}
+
+.font-sans-ui {
+  font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.font-tabular {
+  font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+
+.font-code-mono {
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* Uber-style app opening animations */
+@keyframes uberFadeInScale {
+  0% {
+    opacity: 0;
+    transform: scale(0.92) translateY(14px);
+    letter-spacing: 0.06em;
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.01) translateY(0);
+    letter-spacing: -0.015em;
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+    letter-spacing: -0.025em;
+  }
+}
+
+@keyframes yellowDotPulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(242, 183, 5, 0.7);
+  }
+  50% {
+    transform: scale(1.28);
+    box-shadow: 0 0 0 10px rgba(242, 183, 5, 0);
+  }
+}
+
+@keyframes uberLineExpand {
+  0% {
+    width: 0px;
+    opacity: 0;
+  }
+  50% {
+    width: 48px;
+    opacity: 1;
+  }
+  100% {
+    width: 96px;
+    opacity: 0.85;
+  }
+}
+
+.animate-uber-intro {
+  animation: uberFadeInScale 1.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-yellow-dot {
+  animation: yellowDotPulse 1.8s ease-in-out infinite;
+}
+
+.animate-uber-line {
+  animation: uberLineExpand 1.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.ease-lux {
+  transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Button & Interactive Feedback */
+.btn-primary {
+  height: 52px;
+  min-height: 52px;
+  border-radius: 9999px;
+  background-color: #0E0E0E;
+  color: #FFFFFF;
+  font-size: 15px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-left: 24px;
+  padding-right: 24px;
+  transition: background-color 150ms ease-out, transform 150ms ease-out;
+  cursor: pointer;
+  border: none;
+  font-family: 'Montserrat', sans-serif;
+}
+.btn-primary:active:not(:disabled) {
+  background-color: #262626;
+  transform: translateY(1px);
+}
+.btn-primary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  height: 44px;
+  min-height: 44px;
+  border-radius: 9999px;
+  background-color: #F6F6F6;
+  color: #0E0E0E;
+  border: 1px solid #E4E4E4;
+  font-size: 14px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-left: 18px;
+  padding-right: 18px;
+  transition: background-color 150ms ease-out, border-color 150ms ease-out, transform 150ms ease-out;
+  cursor: pointer;
+  font-family: 'Montserrat', sans-serif;
+}
+.btn-secondary:active:not(:disabled) {
+  background-color: #ECECEC;
+  transform: translateY(1px);
+}
+.btn-secondary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Floating panel soft shadow */
+.shadow-floating {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+/* Mobile Safe Area & Overflow Utilities */
+.pb-safe {
+  padding-bottom: max(16px, env(safe-area-inset-bottom, 16px));
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Custom Scrollbars: minimal hairline */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #E4E4E4;
+  border-radius: 2px;
+}
+
+/* Colored, clean & uncluttered map container */
+.leaflet-container {
+  font-family: 'Montserrat', sans-serif !important;
+  background-color: #E8EEF5 !important;
+  z-index: 1 !important;
+  position: relative;
+}
+
+/* Natural, colored, clean map tiles with vibrant blue waters & green parks */
+.safar-map-tiles,
+.safar-ola-tiles .leaflet-tile,
+.leaflet-tile {
+  filter: contrast(104%) saturate(92%) brightness(101%);
+  will-change: transform, opacity;
+  transition: opacity 0.18s ease-in;
+}
+
+/* Leaflet zoom controls restyled cleanly */
+.leaflet-bar {
+  border: 1px solid #E4E4E4 !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06) !important;
+}
+.leaflet-bar a {
+  background-color: #FFFFFF !important;
+  color: #0E0E0E !important;
+  border-bottom: 1px solid #E4E4E4 !important;
+  width: 36px !important;
+  height: 36px !important;
+  line-height: 36px !important;
+  font-size: 16px !important;
+  font-weight: 600 !important;
+}
+.leaflet-bar a:hover {
+  background-color: #F6F6F6 !important;
+  color: #0E0E0E !important;
+}
+.leaflet-bar a:last-child {
+  border-bottom: none !important;
+}
+
+/* Safar custom driver infobox popup */
+.safar-leaflet-popup .leaflet-popup-content-wrapper {
+  background: #FFFFFF !important;
+  border: 1px solid #E4E4E4 !important;
+  border-radius: 12px !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12) !important;
+  padding: 10px 12px !important;
+}
+.safar-leaflet-popup .leaflet-popup-content {
+  margin: 0 !important;
+  line-height: normal !important;
+}
+.safar-leaflet-popup .leaflet-popup-tip {
+  background: #FFFFFF !important;
+  border: 1px solid #E4E4E4 !important;
+  box-shadow: none !important;
+}
+.safar-leaflet-popup a.leaflet-popup-close-button {
+  top: 6px !important;
+  right: 6px !important;
+  color: #757575 !important;
+  font-size: 16px !important;
+  width: 18px !important;
+  height: 18px !important;
+  padding: 0 !important;
+}
+.safar-leaflet-popup a.leaflet-popup-close-button:hover {
+  color: #0E0E0E !important;
+}
+

@@ -1,0 +1,20 @@
+{
+  "@@locale": "en",
+  "appTitle": "Safar",
+  "appSubtitle": "Peer-to-peer Driver-as-a-Service",
+  "findDriver": "Find a driver",
+  "confirmBooking": "Confirm booking",
+  "startTrip": "Start trip",
+  "endTrip": "End trip",
+  "baseRate": "Base Rate",
+  "nightSurcharge": "Night Surcharge",
+  "platformFee": "Platform & Safety Fee",
+  "totalEstimatedFare": "Total Estimated Fare",
+  "driverBrief": "Driver Brief",
+  "timeBlockScrubber": "Time Block Scrubber",
+  "tripCover": "Trip cover: coming soon: per-trip micro-insurance",
+  "sosEmergency": "Emergency SOS (112)",
+  "tripStartCode": "Trip Start Code",
+  "ownerRole": "Car Owner",
+  "driverRole": "Professional Driver"
+}

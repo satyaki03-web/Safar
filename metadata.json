@@ -1,0 +1,6 @@
+{
+  "name": "Safar",
+  "description": "Peer-to-peer Driver-as-a-Service marketplace for Kolkata, India. Hire verified local drivers by the hour to drive your own car.",
+  "requestFramePermissions": ["geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
