@@ -134,6 +134,8 @@ export const IconClose: React.FC<IconProps> = ({ size = 24, strokeWidth = 1.75, 
   </svg>
 );
 
+export const IconX = IconClose;
+
 export const IconUser: React.FC<IconProps> = ({ size = 24, strokeWidth = 1.75, className = '', ...props }) => (
   <svg {...baseProps(size, strokeWidth, className)} {...props}>
     <circle cx="12" cy="7" r="4" />
@@ -218,6 +220,22 @@ export const IconArrowDownUp: React.FC<IconProps> = ({ size = 24, strokeWidth = 
     <path d="M3 7l4-4 4 4" />
     <path d="M17 21V3" />
     <path d="M21 17l-4 4-4-4" />
+  </svg>
+);
+
+export const IconCamera: React.FC<IconProps> = ({ size = 24, strokeWidth = 1.75, className = '', ...props }) => (
+  <svg {...baseProps(size, strokeWidth, className)} {...props}>
+    <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z" />
+    <circle cx="12" cy="13" r="4" />
+  </svg>
+);
+
+export const IconCalendar: React.FC<IconProps> = ({ size = 24, strokeWidth = 1.75, className = '', ...props }) => (
+  <svg {...baseProps(size, strokeWidth, className)} {...props}>
+    <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+    <line x1="16" y1="2" x2="16" y2="6" />
+    <line x1="8" y1="2" x2="8" y2="6" />
+    <line x1="3" y1="10" x2="21" y2="10" />
   </svg>
 );
 

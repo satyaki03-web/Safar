@@ -75,15 +75,34 @@
         "driverPhoto": { "type": "string", "maxLength": 500 },
         "driverRating": { "type": "number" },
         "driverTripsCount": { "type": "number" },
+        "ride_status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "accepted",
+            "en_route",
+            "arrived",
+            "in_progress",
+            "completed",
+            "cancelled_by_owner",
+            "cancelled_by_driver",
+            "expired"
+          ]
+        },
         "status": {
           "type": "string",
           "enum": [
+            "pending",
+            "accepted",
+            "en_route",
+            "arrived",
+            "in_progress",
+            "completed",
             "looking_for_driver",
             "driver_assigned",
             "driver_en_route",
             "driver_arrived",
             "ride_active",
-            "completed",
             "cancelled_by_owner",
             "cancelled_by_driver",
             "expired"
@@ -94,6 +113,8 @@
         "durationHours": { "type": "number" },
         "outstationDays": { "type": "number" },
         "otp": { "type": "string", "maxLength": 10 },
+        "start_otp": { "type": "string", "maxLength": 10 },
+        "end_otp": { "type": "string", "maxLength": 10 },
         "etaMinutes": { "type": "number" },
         "paymentStatus": { "type": "string", "enum": ["pending", "paid"] },
         "paymentMethod": { "type": "string", "maxLength": 50 },
@@ -101,7 +122,7 @@
         "createdAt": { "type": "string", "maxLength": 50 },
         "updatedAt": { "type": "string", "maxLength": 50 }
       },
-      "required": ["ownerId", "ownerName", "ownerPhone", "status", "tripType", "durationHours", "otp"]
+      "required": ["ownerId", "ownerName", "ownerPhone", "tripType", "durationHours"]
     },
     "Rating": {
       "title": "Rating",

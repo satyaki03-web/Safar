@@ -83,7 +83,7 @@ export const LiveTripSheet: React.FC<LiveTripSheetProps> = ({ ride, onOpenSOS })
         <div>
           <span className="text-[10px] text-[#757575] block">Running fare</span>
           <span className="text-[20px] sm:text-[24px] font-semibold text-[#0E0E0E] font-tabular leading-tight block">
-            {formatRupee(ride.fareEstimate.totalFare)}
+            {formatRupee(ride.fareEstimate?.totalFare || 350)}
           </span>
           <span className="text-[10px] text-[#757575] block mt-0.5">
             Fixed hourly
@@ -91,23 +91,42 @@ export const LiveTripSheet: React.FC<LiveTripSheetProps> = ({ ride, onOpenSOS })
         </div>
       </div>
 
-      {/* Actions: Share Trip & End Trip */}
-      <div className="grid grid-cols-2 gap-2">
+      {/* 4-Digit End OTP Display (Prominently displayed so owner can tell driver upon reaching destination) */}
+      <div className="p-3 bg-[#F6F6F6] rounded-xl border border-[#E4E4E4] space-y-1.5 text-center">
+        <div className="flex items-center justify-between text-left">
+          <span className="text-[11px] font-bold text-[#0E0E0E] uppercase tracking-wider flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-[#0F7B5F]" />
+            Trip Completion Code (End OTP)
+          </span>
+          <span className="text-[10px] text-[#757575] font-medium">
+            Share at destination
+          </span>
+        </div>
+
+        <div className="flex items-center justify-center gap-2.5 py-1">
+          {(ride.end_otp || '----').slice(0, 4).split('').map((digit, idx) => (
+            <div
+              key={idx}
+              className="w-12 h-14 rounded-[8px] bg-[#FFFFFF] border-2 border-[#0E0E0E] flex items-center justify-center font-code-mono text-2xl font-bold text-[#0E0E0E] shadow-xs"
+            >
+              {digit}
+            </div>
+          ))}
+        </div>
+        <p className="text-[11px] text-[#757575]">
+          Share this 4-digit completion code with your driver once you reach your destination to finish the trip.
+        </p>
+      </div>
+
+      {/* Action: Share Live Trip */}
+      <div>
         <button
           type="button"
           onClick={handleShareTrip}
-          className="btn-secondary w-full gap-1.5 text-xs h-10 min-h-[40px]"
+          className="btn-secondary w-full gap-2 text-xs h-10 min-h-[40px]"
         >
           <IconShare size={14} />
-          <span>{copied ? 'Link copied' : 'Share trip'}</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => driverEndTrip(ride.id)}
-          className="btn-primary w-full text-xs h-10 min-h-[40px]"
-        >
-          End trip
+          <span>{copied ? 'Live tracking link copied' : 'Share live trip with family'}</span>
         </button>
       </div>
     </div>

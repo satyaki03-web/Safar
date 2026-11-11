@@ -91,7 +91,7 @@ export const DriverEarningsScreen: React.FC<DriverEarningsScreenProps> = ({ isOp
             ) : (
               <div className="space-y-0 border-t border-b border-[#E4E4E4]">
                 {rideHistory.map((r, idx) => {
-                  const driverNet = Math.round(r.fareEstimate.totalFare * 0.85);
+                  const driverNet = Math.round((r.fareEstimate?.totalFare || 350) * 0.85);
                   return (
                     <div
                       key={r.id}

@@ -293,3 +293,31 @@ export function calculateSubscriptionQuote(params: {
     savingsVsHourly,
   };
 }
+
+/**
+ * Generates smooth intermediate waypoints between two coordinates for map route rendering
+ */
+export function generateRoutePoints(
+  from: { lat: number; lng: number },
+  to: { lat: number; lng: number }
+): { lat: number; lng: number }[] {
+  const points: { lat: number; lng: number }[] = [from];
+  const steps = 7;
+
+  // Add realistic urban road curvature
+  const dLat = (to.lat - from.lat) / steps;
+  const dLng = (to.lng - from.lng) / steps;
+
+  for (let i = 1; i < steps; i++) {
+    // Subtle perpendicular bow to simulate road bends
+    const progress = i / steps;
+    const curveOffset = Math.sin(progress * Math.PI) * 0.0018;
+    const lat = from.lat + dLat * i + (i % 2 === 0 ? curveOffset : -curveOffset * 0.5);
+    const lng = from.lng + dLng * i + (i % 2 === 1 ? curveOffset * 0.8 : 0);
+    points.push({ lat, lng });
+  }
+
+  points.push(to);
+  return points;
+}
+

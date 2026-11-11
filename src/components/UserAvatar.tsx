@@ -82,9 +82,17 @@ export const UserAvatar: React.FC<UserAvatarProps> = ({
       } ${className}`}
       title={user?.name ? `${user.name} (${activeRole}) • ${isCurrentlyOnline ? 'Online' : 'Offline'}` : 'Account profile'}
     >
-      <span className="tracking-tight leading-none pointer-events-none">
-        {initials}
-      </span>
+      {activeRole === 'driver' && driverProfile?.photoUrl ? (
+        <img
+          src={driverProfile.photoUrl}
+          alt={user?.name || 'Driver'}
+          className="w-full h-full object-cover rounded-full pointer-events-none"
+        />
+      ) : (
+        <span className="tracking-tight leading-none pointer-events-none">
+          {initials}
+        </span>
+      )}
 
       {showRoleBadge && (
         <span

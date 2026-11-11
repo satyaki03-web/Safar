@@ -67,16 +67,25 @@ export interface NearbyDriver {
   area: string;
 }
 
+export type StandardRideStatus =
+  | 'pending'
+  | 'accepted'
+  | 'en_route'
+  | 'arrived'
+  | 'in_progress'
+  | 'completed'
+  | 'cancelled'
+  | 'cancelled_by_owner'
+  | 'cancelled_by_driver'
+  | 'expired';
+
 export type RideStatus =
+  | StandardRideStatus
   | 'looking_for_driver'
   | 'driver_assigned'
   | 'driver_en_route'
   | 'driver_arrived'
-  | 'ride_active'
-  | 'completed'
-  | 'cancelled_by_owner'
-  | 'cancelled_by_driver'
-  | 'expired';
+  | 'ride_active';
 
 export type TripType = 'commute' | 'evening_out' | 'outstation' | 'airport' | 'subscription';
 
@@ -119,6 +128,12 @@ export interface SubscriptionBooking {
   savings: number;
   totalFare: number;
   status: 'active' | 'scheduled' | 'completed' | 'cancelled';
+  daysUsed?: number;
+  payoutToDriver?: number;
+  refundToOwner?: number;
+  cancelledAt?: string;
+  cancellationReason?: string;
+  pausedDates?: string[];
   notes?: string;
   driverBrief?: {
     acPreference: 'full' | 'eco' | 'windows';
@@ -179,7 +194,11 @@ export interface Ride {
   outstationDays?: number;
   fareEstimate: FareBreakdown;
   status: RideStatus;
-  otp: string; // 4-digit code e.g. "4829"
+  ride_status?: StandardRideStatus;
+  cancellationReason?: string;
+  otp: string; // Legacy alias for start_otp (4-digit code e.g. "4829")
+  start_otp: string; // 4-digit code generated on request (e.g. "4829")
+  end_otp?: string; // 4-digit code generated on trip start (e.g. "7163")
   driverLocation?: LatLng & { heading?: number; updatedAt?: string };
   etaMinutes?: number;
   startedAt?: string;

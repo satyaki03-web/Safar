@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useRef, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import {
   IconClose,
   IconChevronRight,
+  IconCamera,
+  IconCheck,
 } from './Icons';
 import { UserAvatar } from './UserAvatar';
 
@@ -30,8 +32,13 @@ export const SettingsAndProfileModal: React.FC<SettingsAndProfileModalProps> = (
     vehicles,
     subscriptions,
     driverProfile,
+    updateDriverProfile,
     signOutUser,
   } = useApp();
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const [photoSuccessMsg, setPhotoSuccessMsg] = useState('');
 
   const [avatarVariant, setAvatarVariant] = React.useState<'black-bg' | 'yellow-bg'>(() => {
     try {
@@ -62,6 +69,53 @@ export const SettingsAndProfileModal: React.FC<SettingsAndProfileModalProps> = (
     }
   };
 
+  // Driver Commercial ID Photo Upload (Uber / Ola standard: Driver only)
+  const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setPhotoUploading(true);
+    setPhotoSuccessMsg('');
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = async () => {
+        // Compress & crop to square max 300x300 for fast mobile transport and low Firestore footprint
+        const canvas = document.createElement('canvas');
+        const size = Math.min(img.width, img.height);
+        const targetSize = Math.min(size, 320);
+        canvas.width = targetSize;
+        canvas.height = targetSize;
+
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          const offsetX = (img.width - size) / 2;
+          const offsetY = (img.height - size) / 2;
+          ctx.drawImage(img, offsetX, offsetY, size, size, 0, 0, targetSize, targetSize);
+
+          const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.84);
+          await updateDriverProfile({ photoUrl: compressedDataUrl });
+          setPhotoUploading(false);
+          setPhotoSuccessMsg('Commercial driver photo saved!');
+          setTimeout(() => setPhotoSuccessMsg(''), 3500);
+        } else {
+          setPhotoUploading(false);
+        }
+      };
+      img.src = event.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+    // Reset input
+    e.target.value = '';
+  };
+
+  const handleRemoveDriverPhoto = async () => {
+    await updateDriverProfile({ photoUrl: '' });
+    setPhotoSuccessMsg('Photo removed');
+    setTimeout(() => setPhotoSuccessMsg(''), 3000);
+  };
+
   if (!isOpen || !user) return null;
 
   return (
@@ -84,7 +138,16 @@ export const SettingsAndProfileModal: React.FC<SettingsAndProfileModalProps> = (
           </button>
         </div>
 
-        <div className="p-5 overflow-y-auto space-y-6">
+        <div className="p-5 overflow-y-auto space-y-5">
+          {/* Hidden File Input for Driver Photo Upload (Driver only) */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handlePhotoSelect}
+            className="hidden"
+          />
+
           {/* User Bio Card */}
           <div className="flex items-center gap-3.5">
             <UserAvatar size="lg" showRoleBadge />
@@ -100,6 +163,90 @@ export const SettingsAndProfileModal: React.FC<SettingsAndProfileModalProps> = (
               </span>
             </div>
           </div>
+
+          {/* DRIVER-ONLY PROFILE PICTURE UPLOAD (Uber / Ola standard: Driver ID photo) */}
+          {activeRole === 'driver' && (
+            <div className="p-3.5 bg-[#F6F6F6] rounded-xl border border-[#E4E4E4] space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-xs font-bold text-[#0E0E0E] block">
+                    Driver Profile Picture
+                  </span>
+                  <span className="text-[11px] text-[#757575] block mt-0.5">
+                    Commercial driver photo shown to car owners on trips
+                  </span>
+                </div>
+                {driverProfile?.photoUrl ? (
+                  <span className="text-[10px] font-semibold text-[#0F7B5F] bg-[#0F7B5F]/10 border border-[#0F7B5F]/20 px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <IconCheck size={11} />
+                    <span>Uploaded</span>
+                  </span>
+                ) : (
+                  <span className="text-[10px] font-semibold text-[#757575] bg-[#E4E4E4] px-2 py-0.5 rounded-full">
+                    Required for trip dispatch
+                  </span>
+                )}
+              </div>
+
+              <div className="flex items-center gap-3">
+                <div className="relative w-14 h-14 rounded-full overflow-hidden border-2 border-[#0E0E0E] bg-[#FFFFFF] shrink-0 shadow-xs flex items-center justify-center">
+                  {driverProfile?.photoUrl ? (
+                    <img
+                      src={driverProfile.photoUrl}
+                      alt={driverProfile.name || 'Driver'}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-[#0E0E0E] text-[#F2B705] font-display font-bold text-sm flex items-center justify-center">
+                      {user.name ? user.name.slice(0, 2).toUpperCase() : 'DR'}
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={photoUploading}
+                    className="absolute inset-0 bg-black/40 hover:bg-black/55 text-[#FFFFFF] flex items-center justify-center transition cursor-pointer"
+                    title="Upload driver selfie"
+                  >
+                    <IconCamera size={16} />
+                  </button>
+                </div>
+
+                <div className="flex-1 space-y-1">
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={photoUploading}
+                      className="btn-primary h-8 px-3 text-xs font-semibold gap-1.5 cursor-pointer shadow-2xs"
+                    >
+                      <IconCamera size={13} />
+                      <span>{photoUploading ? 'Uploading...' : driverProfile?.photoUrl ? 'Change Photo' : 'Upload Selfie / Photo'}</span>
+                    </button>
+                    {driverProfile?.photoUrl && (
+                      <button
+                        type="button"
+                        onClick={handleRemoveDriverPhoto}
+                        className="text-xs text-[#DC2626] hover:underline px-2 py-1 font-semibold cursor-pointer"
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                  {photoSuccessMsg ? (
+                    <p className="text-[11px] font-semibold text-[#0F7B5F] flex items-center gap-1">
+                      <IconCheck size={12} />
+                      <span>{photoSuccessMsg}</span>
+                    </p>
+                  ) : (
+                    <span className="text-[10px] text-[#757575] block">
+                      Clear face photo or commercial ID selfie. JPG, PNG, WebP.
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Profile Badge Theme Selector */}
           <div className="space-y-1.5 p-2.5 rounded-[8px] bg-[#F6F6F6] border border-[#E4E4E4]">

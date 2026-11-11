@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { LocationPoint, TripType } from '../types';
 import { KOLKATA_PRESET_LOCATIONS, DEMO_ROUTE_COORDINATES } from '../data/kolkataData';
 import { reverseGeocodeCoords } from '../services/locationService';
-import { calculateFare, formatRupee } from '../utils/fare';
+import { filterDriversWithinPickupRadius, DRIVER_MATCH_RADIUS_KM } from '../services/matchmakingService';
+import { calculateFare, formatRupee, generateRoutePoints } from '../utils/fare';
 import { MapCanvas } from '../components/MapCanvas';
 import { SearchingSheet } from '../components/SearchingSheet';
 import { DriverAssignedSheet } from '../components/DriverAssignedSheet';
@@ -24,6 +25,8 @@ import {
   IconNavigation,
   IconPin,
   IconCalculator,
+  IconAlert,
+  IconX,
 } from '../components/Icons';
 
 interface OwnerHomeScreenProps {
@@ -37,8 +40,11 @@ export const OwnerHomeScreen: React.FC<OwnerHomeScreenProps> = ({ onOpenVehicles
     activeSubscription,
     onlineDrivers,
     userLocation,
+    lastCancellationNotice,
+    clearCancellationNotice,
     cancelSubscription,
     createBooking,
+    clearActiveRide,
   } = useApp();
 
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
@@ -87,10 +93,10 @@ export const OwnerHomeScreen: React.FC<OwnerHomeScreenProps> = ({ onOpenVehicles
   }, [userLocation]);
 
   React.useEffect(() => {
-    if (activeRide?.status === 'completed') {
+    if (activeRide?.status === 'completed' || activeRide?.ride_status === 'completed') {
       setShowReceiptModal(true);
     }
-  }, [activeRide?.status]);
+  }, [activeRide?.status, activeRide?.ride_status]);
 
   React.useEffect(() => {
     const handleOpenSub = () => setShowSubscriptionModal(true);
@@ -147,19 +153,57 @@ export const OwnerHomeScreen: React.FC<OwnerHomeScreenProps> = ({ onOpenVehicles
     KOLKATA_PRESET_LOCATIONS[2],
   ];
 
+  // Matchmaking & Nearby Drivers are EXCLUSIVELY calculated within 5km of the OWNER'S PICKUP LOCATION
+  // (or current live GPS location). The destination coordinates are NEVER used to find or filter drivers.
+  const currentPickup = activeRide?.pickupLocation || pickupPoint || userLocation;
+
+  const nearbyDriversWithin5km = useMemo(() => {
+    return filterDriversWithinPickupRadius(
+      onlineDrivers,
+      currentPickup,
+      DRIVER_MATCH_RADIUS_KM
+    );
+  }, [onlineDrivers, currentPickup]);
+
+  const ownerRouteCoordinates = useMemo(() => {
+    if (!activeRide) return undefined;
+    const s = activeRide.ride_status || activeRide.status;
+    if (s === 'ride_active' || s === 'in_progress') {
+      if (activeRide.pickupLocation && activeRide.destinationLocation) {
+        return generateRoutePoints(
+          activeRide.driverLocation || activeRide.pickupLocation,
+          activeRide.destinationLocation
+        );
+      }
+    }
+    if (s === 'driver_assigned' || s === 'driver_en_route' || s === 'accepted' || s === 'en_route') {
+      if (activeRide.driverLocation && activeRide.pickupLocation) {
+        return generateRoutePoints(activeRide.driverLocation, activeRide.pickupLocation);
+      }
+    }
+    return undefined;
+  }, [
+    activeRide?.status,
+    activeRide?.ride_status,
+    activeRide?.driverLocation?.lat,
+    activeRide?.driverLocation?.lng,
+    activeRide?.pickupLocation,
+    activeRide?.destinationLocation,
+  ]);
+
   return (
     <div className="relative w-full h-[calc(100dvh-56px)] min-h-[420px] overflow-hidden bg-[#FFFFFF]">
       {/* Full-Bleed Map Canvas (The main focus, full-width and full-height) */}
       <div className="absolute inset-0 w-full h-full z-0">
         <MapCanvas
-          pickupLocation={pickupPoint}
-          destinationLocation={destinationPoint}
+          pickupLocation={activeRide ? activeRide.pickupLocation : pickupPoint}
+          destinationLocation={activeRide ? activeRide.destinationLocation : destinationPoint}
           driverLocation={activeRide?.driverLocation || null}
           userLocation={userLocation}
-          routeCoordinates={activeRide?.status === 'ride_active' ? DEMO_ROUTE_COORDINATES : undefined}
+          routeCoordinates={ownerRouteCoordinates}
           isDraggablePin={!activeRide}
           onPickupChange={(point) => setPickupPoint(point)}
-          nearbyDrivers={!activeRide ? onlineDrivers : undefined}
+          nearbyDrivers={(!activeRide || activeRide.status === 'looking_for_driver' || activeRide.ride_status === 'pending') ? nearbyDriversWithin5km : undefined}
         />
       </div>
 
@@ -185,9 +229,9 @@ export const OwnerHomeScreen: React.FC<OwnerHomeScreenProps> = ({ onOpenVehicles
             </div>
 
             <div className="shrink-0 flex items-center gap-1.5 bg-[#F6F6F6] border border-[#E4E4E4] px-2.5 py-1 rounded-full">
-              <span className={`w-2 h-2 rounded-full ${onlineDrivers.length > 0 ? 'bg-[#0F7B5F] animate-pulse' : 'bg-[#757575]'}`}></span>
-              <span className={`text-[11px] font-semibold whitespace-nowrap ${onlineDrivers.length > 0 ? 'text-[#0F7B5F]' : 'text-[#757575]'}`}>
-                {onlineDrivers.length > 0 ? `${onlineDrivers.length} online` : 'Radar active'}
+              <span className={`w-2 h-2 rounded-full ${nearbyDriversWithin5km.length > 0 ? 'bg-[#0F7B5F] animate-pulse' : 'bg-[#757575]'}`}></span>
+              <span className={`text-[11px] font-semibold whitespace-nowrap ${nearbyDriversWithin5km.length > 0 ? 'text-[#0F7B5F]' : 'text-[#757575]'}`}>
+                {nearbyDriversWithin5km.length > 0 ? `${nearbyDriversWithin5km.length} nearby (≤5km)` : '0 within 5km'}
               </span>
             </div>
           </div>
@@ -197,11 +241,20 @@ export const OwnerHomeScreen: React.FC<OwnerHomeScreenProps> = ({ onOpenVehicles
       {/* ACTIVE RIDE DOCKED PANEL (Bottom Center) */}
       {activeRide && (
         <div className="absolute bottom-3 sm:bottom-4 left-1/2 -translate-x-1/2 w-[94%] sm:w-[480px] max-w-lg z-30 rounded-2xl border border-[#E4E4E4] bg-[#FFFFFF] shadow-floating overflow-hidden">
-          {activeRide.status === 'looking_for_driver' && <SearchingSheet ride={activeRide} />}
+          {(activeRide.status === 'looking_for_driver' ||
+            activeRide.status === 'pending' ||
+            activeRide.ride_status === 'pending') && (
+            <SearchingSheet ride={activeRide} nearbyCount={nearbyDriversWithin5km.length} />
+          )}
           {(activeRide.status === 'driver_assigned' ||
             activeRide.status === 'driver_en_route' ||
-            activeRide.status === 'driver_arrived') && <DriverAssignedSheet ride={activeRide} />}
-          {activeRide.status === 'ride_active' && (
+            activeRide.status === 'driver_arrived' ||
+            activeRide.ride_status === 'accepted' ||
+            activeRide.ride_status === 'en_route' ||
+            activeRide.ride_status === 'arrived') && <DriverAssignedSheet ride={activeRide} />}
+          {(activeRide.status === 'ride_active' ||
+            activeRide.status === 'in_progress' ||
+            activeRide.ride_status === 'in_progress') && (
             <LiveTripSheet ride={activeRide} onOpenSOS={() => setShowSOSModal(true)} />
           )}
         </div>
@@ -641,7 +694,10 @@ export const OwnerHomeScreen: React.FC<OwnerHomeScreenProps> = ({ onOpenVehicles
       {activeRide && activeRide.status === 'completed' && showReceiptModal && (
         <ReceiptRatingModal
           ride={activeRide}
-          onDismiss={() => setShowReceiptModal(false)}
+          onDismiss={() => {
+            setShowReceiptModal(false);
+            clearActiveRide();
+          }}
         />
       )}
 
@@ -694,6 +750,33 @@ export const OwnerHomeScreen: React.FC<OwnerHomeScreenProps> = ({ onOpenVehicles
         onClose={() => setShowSubscriptionModal(false)}
         onOpenVehicles={onOpenVehicles}
       />
+
+      {/* Real-Time Driver Cancellation Notice Banner */}
+      {lastCancellationNotice && lastCancellationNotice.by === 'driver' && (
+        <div className="absolute top-14 left-1/2 -translate-x-1/2 w-[92%] sm:w-[480px] max-w-lg z-40 p-4 bg-[#FFF5F5] border-2 border-[#C8321E] rounded-xl shadow-2xl animate-fade-in flex items-start justify-between gap-3">
+          <div className="flex items-start gap-3">
+            <div className="w-8 h-8 rounded-full bg-[#C8321E]/10 flex items-center justify-center shrink-0 mt-0.5">
+              <IconAlert size={18} className="text-[#C8321E]" />
+            </div>
+            <div>
+              <h4 className="text-sm font-bold text-[#0E0E0E]">Trip Cancelled by Driver</h4>
+              <p className="text-xs text-[#757575] mt-0.5">
+                Reason: <strong className="text-[#0E0E0E]">{lastCancellationNotice.reason}</strong>
+              </p>
+              <p className="text-[11px] text-[#757575] mt-1">
+                You can submit a new booking request to find another nearby driver immediately.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={clearCancellationNotice}
+            className="p-1 text-[#757575] hover:text-[#0E0E0E] rounded-full hover:bg-[#E4E4E4]/50 transition cursor-pointer"
+          >
+            <IconX size={16} />
+          </button>
+        </div>
+      )}
     </div>
   );
 };

@@ -63,7 +63,7 @@ export const TripHistoryModal: React.FC<TripHistoryModalProps> = ({ isOpen, onCl
 
                     <div className="text-right">
                       <span className="font-semibold text-sm text-[#0E0E0E] font-tabular block">
-                        {formatRupee(r.fareEstimate.totalFare)}
+                        {formatRupee(r.fareEstimate?.totalFare || 350)}
                       </span>
                       <span className="text-xs text-[#757575] underline block mt-0.5">
                         Receipt
