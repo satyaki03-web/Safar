@@ -4,6 +4,7 @@ import { formatRupee, generateRoutePoints } from '../utils/fare';
 import { MapCanvas } from '../components/MapCanvas';
 import { IconRoute, IconPhone, IconCheck, IconNavigation, IconAlert, IconX } from '../components/Icons';
 import { CancelRideModal } from '../components/CancelRideModal';
+import { SuccessModal } from '../components/SuccessModal';
 
 interface DriverHomeScreenProps {
   onOpenDriverProfile: () => void;
@@ -32,6 +33,7 @@ export const DriverHomeScreen: React.FC<DriverHomeScreenProps> = ({
   } = useApp();
 
   const [showCancelModal, setShowCancelModal] = useState(false);
+  const [showTripSuccessModal, setShowTripSuccessModal] = useState(false);
 
   // Start OTP state (entered upon arrival to start trip)
   const [enteredOtp, setEnteredOtp] = useState('');
@@ -163,6 +165,7 @@ export const DriverHomeScreen: React.FC<DriverHomeScreenProps> = ({
         setEndOtpError('');
         setEnteredEndOtp('');
         setShowEndOtpSection(false);
+        setShowTripSuccessModal(true);
       }
     } finally {
       setCompleting(false);
@@ -748,6 +751,17 @@ export const DriverHomeScreen: React.FC<DriverHomeScreenProps> = ({
           }
           setShowCancelModal(false);
         }}
+        role="driver"
+      />
+
+      {/* Driver Success Modal for Trip Completion */}
+      <SuccessModal
+        isOpen={showTripSuccessModal}
+        onClose={() => setShowTripSuccessModal(false)}
+        type="trip_completed"
+        title="Trip Finished & Payout Settled!"
+        subtitle="Great duty performance! Your 85% driver share has been credited to your daily ledger."
+        amount={Math.round((activeRide?.fareEstimate?.totalFare || 350) * 0.85)}
         role="driver"
       />
     </div>

@@ -3,6 +3,7 @@ import { useApp } from '../context/AppContext';
 import { Ride } from '../types';
 import { formatRupee, formatDateIN } from '../utils/fare';
 import { IconStar, IconClose, IconCheck } from './Icons';
+import { SuccessModal } from './SuccessModal';
 
 interface ReceiptRatingModalProps {
   ride: Ride;
@@ -15,6 +16,7 @@ export const ReceiptRatingModal: React.FC<ReceiptRatingModalProps> = ({ ride, on
   const [paymentStep, setPaymentStep] = useState<'receipt' | 'paying' | 'paid'>(
     ride.paymentStatus === 'paid' ? 'paid' : 'receipt'
   );
+  const [showSuccessPopup, setShowSuccessPopup] = useState(false);
   const [rating, setRating] = useState(5);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [note, setNote] = useState('');
@@ -33,6 +35,7 @@ export const ReceiptRatingModal: React.FC<ReceiptRatingModalProps> = ({ ride, on
     setTimeout(async () => {
       await submitPayment(ride.id, 'UPI');
       setPaymentStep('paid');
+      setShowSuccessPopup(true);
     }, 1200);
   };
 
@@ -272,6 +275,18 @@ export const ReceiptRatingModal: React.FC<ReceiptRatingModalProps> = ({ ride, on
           </button>
         </div>
       </div>
+
+      {/* Success Modal Popup for Payment Confirmation */}
+      <SuccessModal
+        isOpen={showSuccessPopup}
+        onClose={() => setShowSuccessPopup(false)}
+        type="payment_success"
+        title="Payment Successful!"
+        subtitle="Your UPI payment has been processed and verified. Thank you for riding with Safar!"
+        amount={totalFare}
+        paymentReference={ride.paymentReference || ride.id.slice(-8)}
+        role="owner"
+      />
     </div>
   );
 };
